@@ -68,6 +68,7 @@ targets:
         - ../USER/Motor
         - ../USER/Easy_Menu
         - ../USER/Key
+        - ../USER/LED
       libList: []
     excludeList: []
     settings:

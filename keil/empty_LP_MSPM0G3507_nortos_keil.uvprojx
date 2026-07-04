@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>__MSPM0G3507__</Define>
               <Undefine></Undefine>
-              <IncludePath>..\ti;..\;..\third_party\CMSIS\Core\Include;..\USER\BSP;..\USER\ICM45686;..\USER\IMU</IncludePath>
+              <IncludePath>..\ti;..\;..\third_party\CMSIS\Core\Include;..\USER\BSP;..\USER\ICM45686;..\USER\IMU;..\USER\LCD;..\USER\Easy_Menu;..\USER\Key;..\USER\LED;..\USER\Motor;..\USER\Gray</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -448,6 +448,71 @@
               <FileName>IMU.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\IMU\IMU.c</FilePath>
+            </File>
+            <File>
+              <FileName>LED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\LED\LED.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\LCD\LCD.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD_Font.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\LCD\LCD_Font.c</FilePath>
+            </File>
+            <File>
+              <FileName>Easy_Menu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Easy_Menu\Easy_Menu.c</FilePath>
+            </File>
+            <File>
+              <FileName>Easy_Menu_Core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Easy_Menu\Easy_Menu_Core.c</FilePath>
+            </File>
+            <File>
+              <FileName>Easy_Menu_Item.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Easy_Menu\Easy_Menu_Item.c</FilePath>
+            </File>
+            <File>
+              <FileName>Easy_Menu_Page.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Easy_Menu\Easy_Menu_Page.c</FilePath>
+            </File>
+            <File>
+              <FileName>Easy_Menu_User.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Easy_Menu\Easy_Menu_User.c</FilePath>
+            </File>
+            <File>
+              <FileName>Key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Key\Key.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Motor\encoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Motor\motor.c</FilePath>
+            </File>
+            <File>
+              <FileName>ADC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Gray\ADC.c</FilePath>
+            </File>
+            <File>
+              <FileName>Gray.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\Gray\Gray.c</FilePath>
             </File>
           </Files>
         </Group>

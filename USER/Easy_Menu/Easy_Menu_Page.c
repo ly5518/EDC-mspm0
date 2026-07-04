@@ -325,10 +325,11 @@ void Ordinary_Page_Display(void)
         if(ordinary_page->items[item_index]->type == SHOW_ITEM)
         {
             Show_Item *show_item = (Show_Item*)ordinary_page->items[item_index];
-            if(show_item->Callback != NULL && easy_menu.tick - show_item->last_tick >= show_item->period)
+            if(easy_menu.tick - show_item->last_tick >= show_item->period)
             {
                 show_item->last_tick = easy_menu.tick;
-                show_item->Callback();
+                if(show_item->Callback != NULL)
+                    show_item->Callback();
                 
                 Easy_Menu_Area_Clear(1, EASY_MENU_COL_MAX_NUM, line, line);
                 Easy_Menu_Display_String(1, line, ordinary_page->items[item_index]->text);
