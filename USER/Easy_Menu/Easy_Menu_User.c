@@ -29,6 +29,12 @@ struct {
     unsigned short int gray_binary;
     float pitch;
     float roll;
+    unsigned short int analog_vals[8];  // 灰度 8 通道模拟量
+    char gray_bin_str[9];               // 灰度二进制字符串 "10100101"
+    unsigned short int white_ref[8];    // 白场校准基准
+    unsigned short int black_ref[8];    // 黑场校准基准
+    unsigned short int threshold[8];    // 各通道阈值
+    unsigned char cal_state;            // 校准状态：0=空闲 1=白场采集中 2=黑场采集中 3=完成
 } Easy_Menu_Ui_Data = {
     .LED1__data = 0,
     .LED2__data = 0,
@@ -104,13 +110,14 @@ Ordinary_Page main_page;
             Text_Item test;
     Ordinary_Page data_show;
         Show_Item yaw_show;
-        Show_Item gray_binary;
+        Text_Item gray_bin_item;
         Show_Item pitch_val;
         Show_Item roll_val;
     Ordinary_Page gray;
-        Show_Item gray_bin_val;
-        Show_Item gray_raw_val;
-        Text_Item gray_calibrate;
+        Text_Item gray_bin_display;
+        Show_Item gray_ch[8];
+        Text_Item gray_white_cal;
+        Text_Item gray_black_cal;
 /* ================================================================= 枚举列表 ================================================================= */
 char *mode_enum_str[3] = {
     "Static",
@@ -269,6 +276,19 @@ void Gray_Raw_Val_Callback(void)
     /* USER CODE END */
 }
 
+extern void Gray_White_Cal_Handler(void);
+extern void Gray_Black_Cal_Handler(void);
+
+void Gray_White_Cal_Callback(char *str)
+{
+    Gray_White_Cal_Handler();
+}
+
+void Gray_Black_Cal_Callback(char *str)
+{
+    Gray_Black_Cal_Handler();
+}
+
 /* ============================================================== 回调函数（页面） ============================================================ */
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE VALUE BEGIN */
@@ -363,15 +383,23 @@ Item *goto_3_page_items[1] = {
 
 Item *data_show_items[4] = {
     ITEM(yaw_show),
-    ITEM(gray_binary),
+    ITEM(gray_bin_item),
     ITEM(pitch_val),
     ITEM(roll_val)
 };
 
-Item *gray_items[3] = {
-    ITEM(gray_bin_val),
-    ITEM(gray_raw_val),
-    ITEM(gray_calibrate)
+Item *gray_items[11] = {
+    ITEM(gray_bin_display),
+    ITEM(gray_ch[0]),
+    ITEM(gray_ch[1]),
+    ITEM(gray_ch[2]),
+    ITEM(gray_ch[3]),
+    ITEM(gray_ch[4]),
+    ITEM(gray_ch[5]),
+    ITEM(gray_ch[6]),
+    ITEM(gray_ch[7]),
+    ITEM(gray_white_cal),
+    ITEM(gray_black_cal)
 };
 
 /* ================================================================ 系统初始化 ================================================================ */
@@ -445,12 +473,20 @@ void Easy_Menu_Ui_Init(void)
         Show_Item_Init(PAGE(data_show), ITEM(yaw_show),   "yaw",   FLOAT, &ypr[0], 10, NULL);
         Show_Item_Init(PAGE(data_show), ITEM(pitch_val),  "pitch", FLOAT, &ypr[1], 10, NULL);
         Show_Item_Init(PAGE(data_show), ITEM(roll_val),   "roll",  FLOAT, &ypr[2], 10, NULL);
-        Show_Item_Init(PAGE(data_show), ITEM(gray_binary), "gray",  UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.gray_binary, 10, NULL);
+        Text_Item_Init(PAGE(data_show), ITEM(gray_bin_item), Easy_Menu_Ui_Data.gray_bin_str, NULL);
 
-    Ordinary_Page_Init(PAGE(main_page), PAGE(gray), "gray", gray_items, 3);
-        Show_Item_Init(PAGE(gray), ITEM(gray_bin_val), "gray_binary", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray_binary, 10, Gray_Bin_Val_Callback);
-        Show_Item_Init(PAGE(gray), ITEM(gray_raw_val), "gray", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.gray_binary, 10, Gray_Raw_Val_Callback);
-        Text_Item_Init(PAGE(gray), ITEM(gray_calibrate), "Gray Cal", NULL);
+    Ordinary_Page_Init(PAGE(main_page), PAGE(gray), "Gray Sensor", gray_items, 11);
+        Text_Item_Init(PAGE(gray), ITEM(gray_bin_display), Easy_Menu_Ui_Data.gray_bin_str, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[0]), "CH0", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[0], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[1]), "CH1", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[1], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[2]), "CH2", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[2], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[3]), "CH3", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[3], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[4]), "CH4", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[4], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[5]), "CH5", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[5], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[6]), "CH6", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[6], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[7]), "CH7", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[7], 10, NULL);
+        Text_Item_Init(PAGE(gray), ITEM(gray_white_cal), "White Cal", Gray_White_Cal_Callback);
+        Text_Item_Init(PAGE(gray), ITEM(gray_black_cal), "Black Cal", Gray_Black_Cal_Callback);
     
     Easy_Menu_Goto_Page(PAGE(main_page));
 }

@@ -7,20 +7,18 @@ void Get_Analog_value(unsigned short *result)
     unsigned char i, j;
     unsigned int Anolag = 0;
 
-    // 遍历8个传感器通道（3位地址线组合）
     for (i = 0; i < 8; i++)
     {
-        // 通过地址线组合切换传感器通道（注意取反逻辑）
-        Switch_Address_0(!(i & 0x01)); // 地址线0，对应bit0
-        Switch_Address_1(!(i & 0x02)); // 地址线1，对应bit1
-        Switch_Address_2(!(i & 0x04)); // 地址线2，对应bit2
-        delay_us(10);                  // 等待传感器切换地址（IO电平信号翻转有延迟）
+        Switch_Address_0(!(i & 0x01));
+        Switch_Address_1(!(i & 0x02));
+        Switch_Address_2(!(i & 0x04));
+        delay_us(100);                  // 等待多路复用器信号稳定
         Anolag = adc_getValue(40);
         if (!Direction)
             result[i] = Anolag;
         else
             result[7 - i] = Anolag;
-        Anolag = 0; // 重置
+        Anolag = 0;
     }
 }
 

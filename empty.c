@@ -5,12 +5,9 @@
 #include "LCD.h"
 #include "encoder.h"
 #include "motor.h"
-#include "gray.h"
+#include "Gray.h"
 #include "Easy_Menu.h"
 #include "Key.h"
-
-// IIC: PA0=SDA, PA1=SCL
-// SPI: PB6=CS, PB7=MISO, PB8=MOSI, PB9=SCLK
 
 void TimeA1_Init(void);
 static void LCD_Display_Char(unsigned short int x, unsigned short int y, char ch, unsigned char reverse_flag);
@@ -29,6 +26,91 @@ volatile uint8_t print_cnt = 0;  // 打印计数器
 int speedA = 0, speedB = 0;      // 编码器速度（每 5ms 的脉冲数）
 
 float ypr[3];
+No_MCU_Sensor gray_sensor;           // 灰度传感器结构体
+unsigned short gray_analog[8];       // 原始模拟量缓存
+
+/* 通过 extern 访问 Easy_Menu_User.c 中的数据结构体 */
+extern struct {
+    unsigned char LED1__data, LED2__data, LED3__data, LED4__data;
+    unsigned char uint8_data;
+    unsigned short int uint16_data;
+    unsigned int uint32_data;
+    signed char int8_data;
+    signed short int int16_data;
+    signed int int32_data;
+    float float_data;
+    unsigned char hours, minutes, seconds, millisecond;
+    float yaw;
+    unsigned short int gray_binary;
+    float pitch, roll;
+    unsigned short int analog_vals[8];
+    char gray_bin_str[9];
+    unsigned short int white_ref[8];
+    unsigned short int black_ref[8];
+    unsigned short int threshold[8];
+    unsigned char cal_state;
+} Easy_Menu_Ui_Data;
+
+/* ================================================================ 校准函数 ================================================================ */
+#define CAL_SAMPLE_NUM  100  // 校准采样次数
+
+extern void Get_Analog_value(unsigned short *result);
+
+/* 采集 N 次模拟量并求平均 */
+static void Gray_Collect_Average(unsigned short *result)
+{
+    unsigned int sum[8] = {0};
+    unsigned short buf[8];
+    for (int n = 0; n < CAL_SAMPLE_NUM; n++)
+    {
+        Get_Analog_value(buf);
+        for (int i = 0; i < 8; i++)
+            sum[i] += buf[i];
+        delay_us(500);
+    }
+    for (int i = 0; i < 8; i++)
+        result[i] = sum[i] / CAL_SAMPLE_NUM;
+}
+
+/* 计算阈值：靠黑色端 1/3 等分点 = (白 + 2×黑) / 3 */
+static void Gray_Calc_Threshold(void)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        if (Easy_Menu_Ui_Data.white_ref[i] > 0 && Easy_Menu_Ui_Data.black_ref[i] > 0)
+            Easy_Menu_Ui_Data.threshold[i] = (Easy_Menu_Ui_Data.white_ref[i] + 2 * Easy_Menu_Ui_Data.black_ref[i]) / 3;
+        else
+            Easy_Menu_Ui_Data.threshold[i] = 2000;  // 未校准的默认值
+    }
+}
+
+/* 白场校准（按确认键触发）*/
+void Gray_White_Cal_Handler(void)
+{
+    Easy_Menu_Ui_Data.cal_state = 1;
+    Gray_Collect_Average(Easy_Menu_Ui_Data.white_ref);
+    Gray_Calc_Threshold();
+    Easy_Menu_Ui_Data.cal_state = 3;
+    printf("White Cal Done: %4d %4d %4d %4d %4d %4d %4d %4d\r\n",
+           Easy_Menu_Ui_Data.white_ref[0], Easy_Menu_Ui_Data.white_ref[1],
+           Easy_Menu_Ui_Data.white_ref[2], Easy_Menu_Ui_Data.white_ref[3],
+           Easy_Menu_Ui_Data.white_ref[4], Easy_Menu_Ui_Data.white_ref[5],
+           Easy_Menu_Ui_Data.white_ref[6], Easy_Menu_Ui_Data.white_ref[7]);
+}
+
+/* 黑场校准（按确认键触发）*/
+void Gray_Black_Cal_Handler(void)
+{
+    Easy_Menu_Ui_Data.cal_state = 2;
+    Gray_Collect_Average(Easy_Menu_Ui_Data.black_ref);
+    Gray_Calc_Threshold();
+    Easy_Menu_Ui_Data.cal_state = 3;
+    printf("Black Cal Done: %4d %4d %4d %4d %4d %4d %4d %4d\r\n",
+           Easy_Menu_Ui_Data.black_ref[0], Easy_Menu_Ui_Data.black_ref[1],
+           Easy_Menu_Ui_Data.black_ref[2], Easy_Menu_Ui_Data.black_ref[3],
+           Easy_Menu_Ui_Data.black_ref[4], Easy_Menu_Ui_Data.black_ref[5],
+           Easy_Menu_Ui_Data.black_ref[6], Easy_Menu_Ui_Data.black_ref[7]);
+}
 
 /* ================================================================ 主函数 ================================================================ */
 int main(void)
@@ -51,7 +133,16 @@ int main(void)
 
     Motor_Init();
     Encoder_Init();
-    // gray_init();
+
+    /* -------- 补全 ADC+DMA 初始化（SysConfig 未完成部分）-------- */
+    DL_DMA_setSrcAddr(DMA, DMA_CH0_CHAN_ID,
+                      (uint32_t)&ADC0->ULLMEM.MEMRES[0]); // DMA 源：ADC 结果寄存器
+    DL_DMA_setDestAddr(DMA, DMA_CH0_CHAN_ID,
+                       (uint32_t)ADC_VALUE);               // DMA 目标：ADC_VALUE 数组
+    DL_DMA_enableChannel(DMA, DMA_CH0_CHAN_ID);            // 使能 DMA 通道
+    DL_ADC12_startConversion(ADC12_0_INST);                // 启动 ADC 转换
+
+    No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor);           // 灰度传感器首次初始化
     delay_ms(20);
     printf("enter loop\r\n");
 
@@ -97,17 +188,43 @@ int main(void)
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
         Easy_Menu_Display(menu_count);
 
-        // 每 100ms 打印一次调试信息
-        // if (print_flag)
-        // {
-        //     print_flag = 0;
-        //     printf("YPR:%.1f,%.1f,%.1f  SPD:%d,%d\r\n",
-        //            ypr[0], ypr[1], ypr[2], speedA, speedB);
-        //     LCDprint(0, 0, "Y:%.1f P:%.1f R:%.1f  ", ypr[0], ypr[1], ypr[2]);
-        //     LCDprint(0, 1*8, "SA:%d SB:%d    ", speedA, speedB);
-        // }
+        // 每 100ms 采集灰度并打印模拟量
+        if (print_flag)
+        {
+            print_flag = 0;
+
+            No_Mcu_Ganv_Sensor_Task_Without_tick(&gray_sensor);  // 采集灰度
+            Get_Anolog_Value(&gray_sensor, gray_analog);          // 取原始模拟量
+
+            // 同步到菜单数据结构（供 gray 页面 Show_Item 显示）
+            unsigned char digital = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                Easy_Menu_Ui_Data.analog_vals[i] = gray_analog[i];
+                // 优先使用校准阈值，否则用默认值 2000
+                unsigned short th = (Easy_Menu_Ui_Data.threshold[i] > 0) ?
+                                     Easy_Menu_Ui_Data.threshold[i] : 2000;
+                if (gray_analog[i] > th)
+                    digital |= (1 << i);
+            }
+            Easy_Menu_Ui_Data.gray_binary = digital;  // 8 位数字量
+
+            // 生成二进制字符串（MSB 在左：bit7 bit6 ... bit0）
+            for (int i = 0; i < 8; i++)
+                Easy_Menu_Ui_Data.gray_bin_str[i] = (digital & (1 << (7 - i))) ? '1' : '0';
+            Easy_Menu_Ui_Data.gray_bin_str[8] = '\0';
+
+            Easy_Menu_Display_Refresh();  // 刷新当前页面（更新 Text_Item 显示）
+
+            printf("Gray:%4d %4d %4d %4d %4d %4d %4d %4d  %s\r\n",
+                   gray_analog[0], gray_analog[1], gray_analog[2], gray_analog[3],
+                   gray_analog[4], gray_analog[5], gray_analog[6], gray_analog[7],
+                   Easy_Menu_Ui_Data.gray_bin_str);
+        }
     }
 }
+
+
 
 // TIMER_1 every 100us
 void TIMER_1_INST_IRQHandler(void)
@@ -149,6 +266,12 @@ void TimeA1_Init(void)
 {
     NVIC_ClearPendingIRQ(TIMER_1_INST_INT_IRQN);
     NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
+}
+
+/* ADC0 中断处理（DMA 搬运完成后触发，唤醒 __WFI）*/
+void ADC0_IRQHandler(void)
+{
+    DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
 }
 
 /* ================================================================ LCD 回调函数（供 Easy_Menu 使用） ================================================================ */
