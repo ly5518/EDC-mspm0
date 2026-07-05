@@ -1,24 +1,21 @@
 #include "ADC.h"
 #include "string.h"
-uint16_t ADC_VALUE[40];
-//读取ADC的数据
+
+/* 单次 ADC 读取（轮询中断标志，不用 __WFI/__WFE）*/
+static unsigned short adc_read_single(void)
+{
+    DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    DL_ADC12_startConversion(ADC12_0_INST);
+    while (!(DL_ADC12_getRawInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED)))
+        ;
+    return (unsigned short)DL_ADC12_getMemResult(ADC12_0_INST, ADC12_0_ADCMEM_ADC_CH0);
+}
+
+/* 多次采样取平均 */
 unsigned int adc_getValue(unsigned int number)
 {
-				//等待DMA搬运完成新通道的ADC数据
-				memset((uint16_t*)ADC_VALUE, 0, sizeof(ADC_VALUE));
-				__WFI(); 
-				while(ADC_VALUE[number-1]==0){
-					 __WFI(); 
-				};
-        unsigned int gAdcResult = 0;
-        unsigned char i = 0;
-        //采集多次累加
-        for( i = 0; i < number; i++ )
-        {
-                gAdcResult += ADC_VALUE[i];
-        }
-        //均值滤波
-        gAdcResult /= number;
-
-        return gAdcResult;
+    unsigned int sum = 0;
+    for (unsigned int i = 0; i < number; i++)
+        sum += adc_read_single();
+    return sum / number;
 }

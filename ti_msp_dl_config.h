@@ -221,15 +221,15 @@ extern "C" {
 /* Port definition for Pin Group Gray_Address */
 #define Gray_Address_PORT                                                (GPIOA)
 
-/* Defines for PIN_0: GPIOA.15 with pinCMx 37 on package pin 8 */
-#define Gray_Address_PIN_0_PIN                                  (DL_GPIO_PIN_15)
-#define Gray_Address_PIN_0_IOMUX                                 (IOMUX_PINCM37)
+/* Defines for PIN_0: GPIOA.17 with pinCMx 39 on package pin 10 */
+#define Gray_Address_PIN_0_PIN                                  (DL_GPIO_PIN_17)
+#define Gray_Address_PIN_0_IOMUX                                 (IOMUX_PINCM39)
 /* Defines for PIN_1: GPIOA.16 with pinCMx 38 on package pin 9 */
 #define Gray_Address_PIN_1_PIN                                  (DL_GPIO_PIN_16)
 #define Gray_Address_PIN_1_IOMUX                                 (IOMUX_PINCM38)
-/* Defines for PIN_2: GPIOA.17 with pinCMx 39 on package pin 10 */
-#define Gray_Address_PIN_2_PIN                                  (DL_GPIO_PIN_17)
-#define Gray_Address_PIN_2_IOMUX                                 (IOMUX_PINCM39)
+/* Defines for PIN_2: GPIOA.15 with pinCMx 37 on package pin 8 */
+#define Gray_Address_PIN_2_PIN                                  (DL_GPIO_PIN_15)
+#define Gray_Address_PIN_2_IOMUX                                 (IOMUX_PINCM37)
 /* Port definition for Pin Group NRF24L01 */
 #define NRF24L01_PORT                                                    (GPIOB)
 

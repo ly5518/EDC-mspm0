@@ -4,7 +4,7 @@
    参数说明：result - 存储8个通道处理结果的数组 */
 void Get_Analog_value(unsigned short *result)
 {
-    unsigned char i, j;
+    unsigned char i;
     unsigned int Anolag = 0;
 
     for (i = 0; i < 8; i++)
@@ -12,7 +12,7 @@ void Get_Analog_value(unsigned short *result)
         Switch_Address_0(!(i & 0x01));
         Switch_Address_1(!(i & 0x02));
         Switch_Address_2(!(i & 0x04));
-        delay_us(100);                  // 等待多路复用器信号稳定
+        delay_us(100);
         Anolag = adc_getValue(40);
         if (!Direction)
             result[i] = Anolag;
