@@ -15,9 +15,7 @@
           "变量名": "start_page",
           "周期": "150",
           "周期回调函数": true,
-          "周期回调函数名": "Start_Page_Period_Handler",
           "进入回调函数": true,
-          "进入回调函数名": "Start_Page_Enter_Handler",
           "退出回调函数": false
         }
       },
@@ -45,9 +43,8 @@
             "properties": {
               "以父级作为前缀": false,
               "变量名": "text_page__2__item",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Text_Github_Handler"
+              "回调函数名": ""
             }
           },
           {
@@ -87,9 +84,8 @@
               "以父级作为前缀": false,
               "初始值": "0",
               "变量名": "switch_page__1__item",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Switch_LED1_Handler",
+              "回调函数名": "",
               "数据变量名": "LED1__data"
             }
           },
@@ -100,9 +96,8 @@
               "以父级作为前缀": false,
               "初始值": "0",
               "变量名": "switch_page__2__item",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Switch_LED2_Handler",
+              "回调函数名": "",
               "数据变量名": "LED2__data"
             }
           },
@@ -113,9 +108,8 @@
               "以父级作为前缀": false,
               "初始值": "0",
               "变量名": "switch_page__3__item",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Switch_LED3_Handler",
+              "回调函数名": "",
               "数据变量名": "LED3__data"
             }
           },
@@ -126,9 +120,8 @@
               "以父级作为前缀": false,
               "初始值": "0",
               "变量名": "switch_page__4__item",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Switch_LED4_Handler",
+              "回调函数名": "",
               "数据变量名": "LED4__data"
             }
           }
@@ -150,9 +143,8 @@
               "初始值": "1",
               "变量名": "data_page__1__item",
               "变量类型": "uint8_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_uint8_Handler",
+              "回调函数名": "",
               "数据变量名": "uint8_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -167,9 +159,8 @@
               "初始值": "2",
               "变量名": "data_page__2__item",
               "变量类型": "uint16_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_uint16_Handler",
+              "回调函数名": "",
               "数据变量名": "uint16_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -184,9 +175,8 @@
               "初始值": "3",
               "变量名": "data_page__3__item",
               "变量类型": "uint32_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_uint32_Handler",
+              "回调函数名": "",
               "数据变量名": "uint32_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -201,9 +191,8 @@
               "初始值": "4",
               "变量名": "data_page__4__item",
               "变量类型": "int8_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_int8_Handler",
+              "回调函数名": "",
               "数据变量名": "int8_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -218,9 +207,8 @@
               "初始值": "5",
               "变量名": "data_page__5__item",
               "变量类型": "int16_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_int16_Handler",
+              "回调函数名": "",
               "数据变量名": "int16_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -235,9 +223,8 @@
               "初始值": "6",
               "变量名": "data_page__6__item",
               "变量类型": "int32_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_int32_Handler",
+              "回调函数名": "",
               "数据变量名": "int32_data",
               "最大值": "NULL",
               "最小值": "NULL",
@@ -252,9 +239,8 @@
               "初始值": "7",
               "变量名": "data_page__7__item",
               "变量类型": "float_val",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Data_float_Handler",
+              "回调函数名": "",
               "数据变量名": "float_data",
               "最大值": "10",
               "最小值": "-10",
@@ -277,9 +263,8 @@
             "properties": {
               "以父级作为前缀": false,
               "变量名": "mode",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Mode_Handler",
+              "回调函数名": "",
               "枚举字符串": [
                 "Static",
                 "Slow",
@@ -322,9 +307,8 @@
               "变量名": "user_show_page__1__item",
               "变量类型": "uint8_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Clock_Hour_Handler",
+              "回调函数名": "Hour_Item_Callback",
               "数据变量名": "hours"
             }
           },
@@ -337,9 +321,8 @@
               "变量名": "user_show_page__2__item",
               "变量类型": "uint8_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Clock_Minute_Handler",
+              "回调函数名": "Minute_Item_Callback",
               "数据变量名": "minutes"
             }
           },
@@ -352,9 +335,8 @@
               "变量名": "user_show_page__3__item",
               "变量类型": "uint8_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Clock_Second_Handler",
+              "回调函数名": "Second_Item_Callback",
               "数据变量名": "seconds"
             }
           },
@@ -367,9 +349,8 @@
               "变量名": "user_show_page__4__item",
               "变量类型": "uint8_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Clock_Millisecond_Handler",
+              "回调函数名": "Millisecond_Item_Callback",
               "数据变量名": "millisecond"
             }
           }
@@ -475,129 +456,199 @@
         ]
       },
       {
-        "name": "data_show",
+        "name": "Data_Show",
         "type": "普通页面",
         "properties": {
           "以父级作为前缀": false,
-          "变量名": "data_show"
+          "变量名": "Data_Show"
         },
         "children": [
           {
             "name": "yaw",
             "type": "展示条目",
             "properties": {
-              "以父级作为前缀": false,
+              "以父级作为前缀": true,
               "初始值": "0",
-              "变量名": "yaw_show",
-              "变量类型": "int16_val",
+              "变量名": "yaw",
+              "变量类型": "float_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Yaw_Handler",
-              "数据变量名": "yaw",
-              "数据类型": "float_val"
-            }
-          },
-          {
-            "name": "gray_binary",
-            "type": "展示条目",
-            "properties": {
-              "以父级作为前缀": false,
-              "初始值": "0",
-              "变量名": "gray_binary",
-              "变量类型": "uint8_val",
-              "周期": "10",
-              "回调使能": true,
-              "回调函数": true,
-              "回调函数名": "Gray_Binary_Handler",
-              "数据变量名": "gray_binary",
-              "数据类型": "uint16_val"
-            }
-          },
-          {
-            "name": "pitch",
-            "type": "展示条目",
-            "properties": {
-              "以变量名为前缀": false,
-              "以父级作为前缀": false,
-              "初始值": "0",
-              "变量名": "pitch_val",
-              "变量类型": "uint8_val",
-              "周期": "10",
-              "回调使能": true,
-              "回调函数": false,
-              "回调函数名": "Pitch_Handler",
-              "数据变量名": "pitch",
-              "数据类型": "float_val"
+              "数据变量名": "yaw"
             }
           },
           {
             "name": "roll",
             "type": "展示条目",
             "properties": {
-              "以变量名为前缀": false,
-              "以父级作为前缀": false,
+              "以父级作为前缀": true,
               "初始值": "0",
-              "变量名": "roll_val",
-              "变量类型": "uint8_val",
+              "变量名": "roll",
+              "变量类型": "float_val",
               "周期": "10",
-              "回调使能": true,
-              "回调函数": false,
-              "回调函数名": "Roll_Handler",
-              "数据变量名": "roll",
-              "数据类型": "float_val"
+              "回调函数": true,
+              "数据变量名": "roll"
+            }
+          },
+          {
+            "name": "pitch",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": true,
+              "初始值": "0",
+              "变量名": "pitch",
+              "变量类型": "float_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "pitch"
             }
           }
         ]
       },
       {
-        "name": "gray",
+        "name": "Gray",
         "type": "普通页面",
         "properties": {
           "以父级作为前缀": false,
-          "变量名": "gray"
+          "变量名": "Gray"
         },
         "children": [
           {
-            "name": "gray_binary",
+            "name": "gray_digital",
             "type": "展示条目",
             "properties": {
               "以父级作为前缀": false,
               "初始值": "0",
-              "变量名": "gray_bin_val",
+              "变量名": "gray_digital",
               "变量类型": "uint8_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Gray_Binary_Handler",
-              "数据变量名": "gray_binary"
+              "数据变量名": "gray_digital_data"
             }
           },
           {
-            "name": "gray",
+            "name": "CH1",
             "type": "展示条目",
             "properties": {
               "以父级作为前缀": false,
               "初始值": "0",
-              "变量名": "gray_raw_val",
+              "变量名": "CH1",
               "变量类型": "uint16_val",
               "周期": "10",
-              "回调使能": true,
               "回调函数": true,
-              "回调函数名": "Gray_Raw_Handler",
-              "数据变量名": "gray_binary"
+              "数据变量名": "CH1_data"
             }
           },
           {
-            "name": "Gray Cal",
-            "type": "文本条目",
+            "name": "CH2",
+            "type": "展示条目",
             "properties": {
-              "以变量名为前缀": false,
               "以父级作为前缀": false,
-              "变量名": "gray_calibrate",
-              "回调使能": true,
-              "回调函数": false,
-              "回调函数名": "Gray_Calibrate_Callback"
+              "初始值": "0",
+              "变量名": "CH2",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH2_data"
+            }
+          },
+          {
+            "name": "CH3",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH3",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH3_data"
+            }
+          },
+          {
+            "name": "CH4",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH4",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH4_data"
+            }
+          },
+          {
+            "name": "CH5",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH5",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH5_data"
+            }
+          },
+          {
+            "name": "CH6",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH6",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH6_data"
+            }
+          },
+          {
+            "name": "CH7",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH7",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH7_data"
+            }
+          },
+          {
+            "name": "CH8",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "CH8",
+              "变量类型": "uint16_val",
+              "周期": "10",
+              "回调函数": true,
+              "数据变量名": "CH8_data"
+            }
+          },
+          {
+            "name": "gray_white_cal",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "gray_white_cal",
+              "回调函数": true,
+              "数据变量名": "gray_white_cal"
+            }
+          },
+          {
+            "name": "gray_black_cal",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "gray_black_cal",
+              "回调函数": true,
+              "数据变量名": "gray_black_cal"
             }
           }
         ]

@@ -26,11 +26,26 @@ volatile uint8_t print_cnt = 0;  // 打印计数器
 int speedA = 0, speedB = 0;      // 编码器速度（每 5ms 的脉冲数）
 
 float ypr[3];
-No_MCU_Sensor gray_sensor;           // 灰度传感器结构体
-unsigned short gray_analog[8];       // 原始模拟量缓存
+No_MCU_Sensor gray_sensor;        // 灰度传感器结构体
+unsigned short gray_analog[8];    // 原始模拟量缓存
+uint16_t gray_white_ref[8]; // 白场参考值
+uint16_t gray_black_ref[8]; // 黑场参考值
+uint16_t gray_threshold[8]; // 灰度阈值
+uint8_t gray_digital_show;
+
+/* ================================================================ 校准状态 ================================================================ */
+#define CAL_STATE_IDLE      0
+#define CAL_STATE_WHITE     1
+#define CAL_STATE_BLACK     2
+#define CAL_SAMPLE_NUM_USER 50  // 用户校准采样次数
+
+static uint8_t  cal_state = CAL_STATE_IDLE;
+static uint8_t  cal_sample_cnt = 0;
+static uint32_t cal_sum[8] = {0};
 
 /* 通过 extern 访问 Easy_Menu_User.c 中的数据结构体 */
-extern struct {
+extern struct
+{
     unsigned char LED1__data, LED2__data, LED3__data, LED4__data;
     unsigned char uint8_data;
     unsigned short int uint16_data;
@@ -45,16 +60,8 @@ extern struct {
     float pitch, roll;
 } Easy_Menu_Ui_Data;
 
-/* 自定义扩展数据（通过 extern 指针直接访问，无结构体依赖）*/
-extern unsigned short *pAnalogVals;
-extern char *pGrayBinStr;
-extern unsigned short *pWhiteRef;
-extern unsigned short *pBlackRef;
-extern unsigned short *pThreshold;
-extern unsigned char *pCalState;
-
 /* ================================================================ 校准函数 ================================================================ */
-#define CAL_SAMPLE_NUM  100  // 校准采样次数
+#define CAL_SAMPLE_NUM 100 // 校准采样次数
 
 extern void Get_Analog_value(unsigned short *result);
 
@@ -79,31 +86,48 @@ static void Gray_Calc_Threshold(void)
 {
     for (int i = 0; i < 8; i++)
     {
-        if (pWhiteRef[i] > 0 && pBlackRef[i] > 0)
-            pThreshold[i] = (pWhiteRef[i] + 3 * pBlackRef[i]) / 4;
+        if (gray_white_ref[i] > 0 && gray_black_ref[i] > 0)
+            gray_threshold[i] = (gray_white_ref[i] + 2 * gray_black_ref[i]) / 3;
         else
-            pThreshold[i] = 2000;  // 未校准的默认值
+            gray_threshold[i] = 2000;  // 未校准的默认值
     }
 }
 
-/* 白场校准（按确认键触发）*/
-void Gray_White_Cal_Handler(void)
+/* 白场校准启动（由菜单 Switch 回调调用）*/
+void Gray_White_Cal_Start(void)
 {
-    *pCalState = 1;
-    Gray_Collect_Average(pWhiteRef);
-    Gray_Calc_Threshold();
-    *pCalState = 3;
-    /* White Cal Done */
+    for (int i = 0; i < 8; i++) cal_sum[i] = 0;
+    cal_sample_cnt = 0;
+    cal_state = CAL_STATE_WHITE;
 }
 
-/* 黑场校准（按确认键触发）*/
-void Gray_Black_Cal_Handler(void)
+/* 黑场校准启动（由菜单 Switch 回调调用）*/
+void Gray_Black_Cal_Start(void)
 {
-    *pCalState = 2;
-    Gray_Collect_Average(pBlackRef);
-    Gray_Calc_Threshold();
-    *pCalState = 3;
-    /* Black Cal Done */
+    for (int i = 0; i < 8; i++) cal_sum[i] = 0;
+    cal_sample_cnt = 0;
+    cal_state = CAL_STATE_BLACK;
+}
+
+/* 校准增量采集（在主循环 100ms 周期中调用，每次采集 1 个样本）*/
+static void Gray_Cal_Collect_Incremental(void)
+{
+    if (cal_state == CAL_STATE_IDLE) return;
+
+    unsigned short buf[8];
+    Get_Analog_value(buf);
+    for (int i = 0; i < 8; i++)
+        cal_sum[i] += buf[i];
+    cal_sample_cnt++;
+
+    if (cal_sample_cnt >= CAL_SAMPLE_NUM_USER)
+    {
+        uint16_t *ref = (cal_state == CAL_STATE_WHITE) ? gray_white_ref : gray_black_ref;
+        for (int i = 0; i < 8; i++)
+            ref[i] = cal_sum[i] / CAL_SAMPLE_NUM_USER;
+        Gray_Calc_Threshold();
+        cal_state = CAL_STATE_IDLE;
+    }
 }
 
 /* ================================================================ 主函数 ================================================================ */
@@ -131,12 +155,8 @@ int main(void)
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
     DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
 
-    No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor);           // 灰度传感器首次初始化
+    No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
-
-    // 测试：写入固定值，验证菜单能否正确显示
-    for (int i = 0; i < 8; i++)
-        pAnalogVals[i] = (i + 1) * 100;  // 100,200,300...800
 
     Set_PWM(2000, -2000);
     while (1)
@@ -185,33 +205,23 @@ int main(void)
         {
             print_flag = 0;
 
-            No_Mcu_Ganv_Sensor_Task_Without_tick(&gray_sensor);  // 采集灰度
-            Get_Anolog_Value(&gray_sensor, gray_analog);          // 取原始模拟量
+            No_Mcu_Ganv_Sensor_Task_Without_tick(&gray_sensor); // 采集灰度
+            Get_Anolog_Value(&gray_sensor, gray_analog);        // 取原始模拟量
 
-            // 同步到菜单数据结构（供 gray 页面 Show_Item 显示）
-            unsigned char digital = 0;
+            // 校准增量采集（非阻塞，每次 1 个样本）
+            Gray_Cal_Collect_Incremental();
+
+            // 使用校准阈值进行二值化，未校准时回退到 2000
             for (int i = 0; i < 8; i++)
             {
-                pAnalogVals[i] = gray_analog[i];
-                // 优先使用校准阈值，否则用默认值 2000
-                unsigned short th = (pThreshold[i] > 0) ?
-                                     pThreshold[i] : 2000;
-                if (gray_analog[i] > th)
-                    digital |= (1 << i);
+                unsigned short th = (gray_threshold[i] > 0) ? gray_threshold[i] : 2000;
+                gray_digital_show = (gray_analog[i] > th) ? (gray_digital_show | (1 << i)) : (gray_digital_show & ~(1 << i));
             }
-            Easy_Menu_Ui_Data.gray_binary = digital;  // 8 位数字量
 
-            // 生成二进制字符串（MSB 在左：bit7 bit6 ... bit0）
-            for (int i = 0; i < 8; i++)
-                pGrayBinStr[i] = (digital & (1 << (7 - i))) ? '1' : '0';
-            pGrayBinStr[8] = '\0';
-
-            Easy_Menu_Display_Refresh();  // 刷新当前页面（更新 Text_Item 显示）
+            Easy_Menu_Display_Refresh(); // 刷新当前页面（更新 Text_Item 显示）
         }
     }
 }
-
-
 
 // TIMER_1 every 100us
 void TIMER_1_INST_IRQHandler(void)
