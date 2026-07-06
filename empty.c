@@ -43,13 +43,15 @@ extern struct {
     float yaw;
     unsigned short int gray_binary;
     float pitch, roll;
-    unsigned short int analog_vals[8];
-    char gray_bin_str[9];
-    unsigned short int white_ref[8];
-    unsigned short int black_ref[8];
-    unsigned short int threshold[8];
-    unsigned char cal_state;
 } Easy_Menu_Ui_Data;
+
+/* 自定义扩展数据（通过 extern 指针直接访问，无结构体依赖）*/
+extern unsigned short *pAnalogVals;
+extern char *pGrayBinStr;
+extern unsigned short *pWhiteRef;
+extern unsigned short *pBlackRef;
+extern unsigned short *pThreshold;
+extern unsigned char *pCalState;
 
 /* ================================================================ 校准函数 ================================================================ */
 #define CAL_SAMPLE_NUM  100  // 校准采样次数
@@ -77,30 +79,30 @@ static void Gray_Calc_Threshold(void)
 {
     for (int i = 0; i < 8; i++)
     {
-        if (Easy_Menu_Ui_Data.white_ref[i] > 0 && Easy_Menu_Ui_Data.black_ref[i] > 0)
-            Easy_Menu_Ui_Data.threshold[i] = (Easy_Menu_Ui_Data.white_ref[i] + 3 * Easy_Menu_Ui_Data.black_ref[i]) / 4;
+        if (pWhiteRef[i] > 0 && pBlackRef[i] > 0)
+            pThreshold[i] = (pWhiteRef[i] + 3 * pBlackRef[i]) / 4;
         else
-            Easy_Menu_Ui_Data.threshold[i] = 2000;  // 未校准的默认值
+            pThreshold[i] = 2000;  // 未校准的默认值
     }
 }
 
 /* 白场校准（按确认键触发）*/
 void Gray_White_Cal_Handler(void)
 {
-    Easy_Menu_Ui_Data.cal_state = 1;
-    Gray_Collect_Average(Easy_Menu_Ui_Data.white_ref);
+    *pCalState = 1;
+    Gray_Collect_Average(pWhiteRef);
     Gray_Calc_Threshold();
-    Easy_Menu_Ui_Data.cal_state = 3;
+    *pCalState = 3;
     /* White Cal Done */
 }
 
 /* 黑场校准（按确认键触发）*/
 void Gray_Black_Cal_Handler(void)
 {
-    Easy_Menu_Ui_Data.cal_state = 2;
-    Gray_Collect_Average(Easy_Menu_Ui_Data.black_ref);
+    *pCalState = 2;
+    Gray_Collect_Average(pBlackRef);
     Gray_Calc_Threshold();
-    Easy_Menu_Ui_Data.cal_state = 3;
+    *pCalState = 3;
     /* Black Cal Done */
 }
 
@@ -125,11 +127,16 @@ int main(void)
     Motor_Init();
     Encoder_Init();
 
-    /* ADC 初始化由 SysConfig 完成，无需额外配置 */
+    /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
+    DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
 
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor);           // 灰度传感器首次初始化
     delay_ms(20);
-    printf("enter loop\r\n");
+
+    // 测试：写入固定值，验证菜单能否正确显示
+    for (int i = 0; i < 8; i++)
+        pAnalogVals[i] = (i + 1) * 100;  // 100,200,300...800
 
     Set_PWM(2000, -2000);
     while (1)
@@ -185,10 +192,10 @@ int main(void)
             unsigned char digital = 0;
             for (int i = 0; i < 8; i++)
             {
-                Easy_Menu_Ui_Data.analog_vals[i] = gray_analog[i];
+                pAnalogVals[i] = gray_analog[i];
                 // 优先使用校准阈值，否则用默认值 2000
-                unsigned short th = (Easy_Menu_Ui_Data.threshold[i] > 0) ?
-                                     Easy_Menu_Ui_Data.threshold[i] : 2000;
+                unsigned short th = (pThreshold[i] > 0) ?
+                                     pThreshold[i] : 2000;
                 if (gray_analog[i] > th)
                     digital |= (1 << i);
             }
@@ -196,8 +203,8 @@ int main(void)
 
             // 生成二进制字符串（MSB 在左：bit7 bit6 ... bit0）
             for (int i = 0; i < 8; i++)
-                Easy_Menu_Ui_Data.gray_bin_str[i] = (digital & (1 << (7 - i))) ? '1' : '0';
-            Easy_Menu_Ui_Data.gray_bin_str[8] = '\0';
+                pGrayBinStr[i] = (digital & (1 << (7 - i))) ? '1' : '0';
+            pGrayBinStr[8] = '\0';
 
             Easy_Menu_Display_Refresh();  // 刷新当前页面（更新 Text_Item 显示）
         }

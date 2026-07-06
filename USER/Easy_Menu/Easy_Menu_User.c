@@ -6,6 +6,35 @@
 
 /* USER CODE PUBLIC BEGIN */
 extern float ypr[3];
+
+typedef struct {
+    float yaw;
+    float pitch;
+    float roll;
+    unsigned short analog_vals[8];
+    char gray_bin_str[9];
+    unsigned short white_ref[8];
+    unsigned short black_ref[8];
+    unsigned short threshold[8];
+    unsigned char cal_state;
+} Easy_Menu_Ext_t;
+
+Easy_Menu_Ext_t Easy_Menu_Ext = {0};
+
+// 独立指针（供 empty.c 通过 extern 直接访问，避免结构体布局问题）
+unsigned short *pAnalogVals = Easy_Menu_Ext.analog_vals;
+char *pGrayBinStr = Easy_Menu_Ext.gray_bin_str;
+unsigned short *pWhiteRef = Easy_Menu_Ext.white_ref;
+unsigned short *pBlackRef = Easy_Menu_Ext.black_ref;
+unsigned short *pThreshold = Easy_Menu_Ext.threshold;
+unsigned char *pCalState = &Easy_Menu_Ext.cal_state;
+
+/* 校准回调（调用 empty.c 中的处理函数）*/
+extern void Gray_White_Cal_Handler(void);
+extern void Gray_Black_Cal_Handler(void);
+
+static void _Gray_White_Cal_CB(char *str) { Gray_White_Cal_Handler(); }
+static void _Gray_Black_Cal_CB(char *str) { Gray_Black_Cal_Handler(); }
 /* USER CODE PUBLIC END */
 
 /* ================================================================= 占位变量 ================================================================= */
@@ -25,16 +54,10 @@ struct {
     unsigned char minutes;
     unsigned char seconds;
     unsigned char millisecond;
-    float yaw;
+    signed short int yaw;
     unsigned short int gray_binary;
-    float pitch;
-    float roll;
-    unsigned short int analog_vals[8];  // 灰度 8 通道模拟量
-    char gray_bin_str[9];               // 灰度二进制字符串 "10100101"
-    unsigned short int white_ref[8];    // 白场校准基准
-    unsigned short int black_ref[8];    // 黑场校准基准
-    unsigned short int threshold[8];    // 各通道阈值
-    unsigned char cal_state;            // 校准状态：0=空闲 1=白场采集中 2=黑场采集中 3=完成
+    unsigned char pitch;
+    unsigned char roll;
 } Easy_Menu_Ui_Data = {
     .LED1__data = 0,
     .LED2__data = 0,
@@ -108,16 +131,6 @@ Ordinary_Page main_page;
                     Goto_Item goto__goto_111_page__2__item;
         Ordinary_Page goto_3_page;
             Text_Item test;
-    Ordinary_Page data_show;
-        Show_Item yaw_show;
-        Text_Item gray_bin_item;
-        Show_Item pitch_val;
-        Show_Item roll_val;
-    Ordinary_Page gray;
-        Text_Item gray_bin_display;
-        Show_Item gray_ch[8];
-        Text_Item gray_white_cal;
-        Text_Item gray_black_cal;
 /* ================================================================= 枚举列表 ================================================================= */
 char *mode_enum_str[3] = {
     "Static",
@@ -129,6 +142,19 @@ char *state_enum_str[2] = {
     "Run",
     "Stop"
 };
+
+/* USER CODE VARS BEGIN */
+    Ordinary_Page data_show;
+        Show_Item yaw_show;
+        Text_Item gray_bin_item;
+        Show_Item pitch_val;
+        Show_Item roll_val;
+    Ordinary_Page gray;
+        Text_Item gray_bin_display;
+        Show_Item gray_ch[8];
+        Text_Item gray_white_cal;
+        Text_Item gray_black_cal;
+/* USER CODE VARS END */
 
 /* ============================================================== 回调函数（条目） ============================================================ */
 void Text_Page__2__Item_Callback(char *str)
@@ -224,28 +250,49 @@ void Mode_Callback(char *str)
 
 void User_Show_Page__1__Item_Callback(void)
 {
-    if(Easy_Menu_Ui_Data.hours >= 24) Easy_Menu_Ui_Data.hours = 0;
+    /* USER CODE BEGIN */
+    if (Easy_Menu_Ui_Data.hours >= 24)
+        Easy_Menu_Ui_Data.hours = 0;
+    /* USER CODE END */
 }
 
 void User_Show_Page__2__Item_Callback(void)
 {
-    if(Easy_Menu_Ui_Data.minutes >= 60)
-    { Easy_Menu_Ui_Data.minutes = 0; Easy_Menu_Ui_Data.hours++; }
+    /* USER CODE BEGIN */
+    if (Easy_Menu_Ui_Data.minutes >= 60)
+    {
+        Easy_Menu_Ui_Data.minutes = 0;
+        Easy_Menu_Ui_Data.hours++;
+    }
+
+    /* USER CODE END */
 }
 
 void User_Show_Page__3__Item_Callback(void)
 {
-    if(Easy_Menu_Ui_Data.seconds >= 60)
-    { Easy_Menu_Ui_Data.seconds = 0; Easy_Menu_Ui_Data.minutes++; }
+    /* USER CODE BEGIN */
+    if (Easy_Menu_Ui_Data.seconds >= 60)
+    {
+        Easy_Menu_Ui_Data.seconds = 0;
+        Easy_Menu_Ui_Data.minutes++;
+    }
+
+    /* USER CODE END */
 }
 
 void User_Show_Page__4__Item_Callback(void)
 {
+    /* USER CODE BEGIN */
     static unsigned int last_tick = 0;
     Easy_Menu_Ui_Data.millisecond += (easy_menu.tick - last_tick) / 10;
     last_tick = easy_menu.tick;
-    if(Easy_Menu_Ui_Data.millisecond >= 100)
-    { Easy_Menu_Ui_Data.millisecond = 0; Easy_Menu_Ui_Data.seconds++; }
+    if (Easy_Menu_Ui_Data.millisecond >= 100)
+    {
+        Easy_Menu_Ui_Data.millisecond = 0;
+        Easy_Menu_Ui_Data.seconds++;
+    }
+
+    /* USER CODE END */
 }
 
 void Yaw_Show_Callback(void)
@@ -276,22 +323,10 @@ void Gray_Raw_Val_Callback(void)
     /* USER CODE END */
 }
 
-extern void Gray_White_Cal_Handler(void);
-extern void Gray_Black_Cal_Handler(void);
-
-void Gray_White_Cal_Callback(char *str)
-{
-    Gray_White_Cal_Handler();
-}
-
-void Gray_Black_Cal_Callback(char *str)
-{
-    Gray_Black_Cal_Handler();
-}
-
 /* ============================================================== 回调函数（页面） ============================================================ */
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE VALUE BEGIN */
+
 /* USER CODE VALUE END */
 /* Private function ----------------------------------------------------------*/
 void Start_Page_Enter_Callback(void)
@@ -381,6 +416,7 @@ Item *goto_3_page_items[1] = {
     ITEM(test)
 };
 
+/* USER CODE ARRAY BEGIN */
 Item *data_show_items[4] = {
     ITEM(yaw_show),
     ITEM(gray_bin_item),
@@ -401,6 +437,7 @@ Item *gray_items[11] = {
     ITEM(gray_white_cal),
     ITEM(gray_black_cal)
 };
+/* USER CODE ARRAY END */
 
 /* ================================================================ 系统初始化 ================================================================ */
 void Easy_Menu_Ui_Init(void)
@@ -469,24 +506,28 @@ void Easy_Menu_Ui_Init(void)
     Ordinary_Page_Init(PAGE(Goto_Page), PAGE(goto_3_page), "Goto 3 Page", goto_3_page_items, 1);
         Text_Item_Init(PAGE(goto_3_page), ITEM(test), "TEST", NULL);
 
+    /* USER CODE INIT BEGIN */
+    // data_show 页面（绑定 ypr 数据和二进制显示）
     Ordinary_Page_Init(PAGE(main_page), PAGE(data_show), "data_show", data_show_items, 4);
         Show_Item_Init(PAGE(data_show), ITEM(yaw_show),   "yaw",   FLOAT, &ypr[0], 10, NULL);
         Show_Item_Init(PAGE(data_show), ITEM(pitch_val),  "pitch", FLOAT, &ypr[1], 10, NULL);
         Show_Item_Init(PAGE(data_show), ITEM(roll_val),   "roll",  FLOAT, &ypr[2], 10, NULL);
-        Text_Item_Init(PAGE(data_show), ITEM(gray_bin_item), Easy_Menu_Ui_Data.gray_bin_str, NULL);
+        Text_Item_Init(PAGE(data_show), ITEM(gray_bin_item), pGrayBinStr, NULL);
 
+    // gray 页面（8通道模拟量 + 二进制 + 校准按钮）
     Ordinary_Page_Init(PAGE(main_page), PAGE(gray), "Gray Sensor", gray_items, 11);
-        Text_Item_Init(PAGE(gray), ITEM(gray_bin_display), Easy_Menu_Ui_Data.gray_bin_str, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[0]), "CH0", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[0], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[1]), "CH1", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[1], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[2]), "CH2", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[2], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[3]), "CH3", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[3], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[4]), "CH4", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[4], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[5]), "CH5", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[5], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[6]), "CH6", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[6], 10, NULL);
-        Show_Item_Init(PAGE(gray), ITEM(gray_ch[7]), "CH7", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.analog_vals[7], 10, NULL);
-        Text_Item_Init(PAGE(gray), ITEM(gray_white_cal), "White Cal", Gray_White_Cal_Callback);
-        Text_Item_Init(PAGE(gray), ITEM(gray_black_cal), "Black Cal", Gray_Black_Cal_Callback);
+        Text_Item_Init(PAGE(gray), ITEM(gray_bin_display), pGrayBinStr, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[0]), "CH0", UNSIGNED_SHORT_INT, &pAnalogVals[0], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[1]), "CH1", UNSIGNED_SHORT_INT, &pAnalogVals[1], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[2]), "CH2", UNSIGNED_SHORT_INT, &pAnalogVals[2], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[3]), "CH3", UNSIGNED_SHORT_INT, &pAnalogVals[3], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[4]), "CH4", UNSIGNED_SHORT_INT, &pAnalogVals[4], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[5]), "CH5", UNSIGNED_SHORT_INT, &pAnalogVals[5], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[6]), "CH6", UNSIGNED_SHORT_INT, &pAnalogVals[6], 10, NULL);
+        Show_Item_Init(PAGE(gray), ITEM(gray_ch[7]), "CH7", UNSIGNED_SHORT_INT, &pAnalogVals[7], 10, NULL);
+        Text_Item_Init(PAGE(gray), ITEM(gray_white_cal), "White Cal", _Gray_White_Cal_CB);
+        Text_Item_Init(PAGE(gray), ITEM(gray_black_cal), "Black Cal", _Gray_Black_Cal_CB);
+    /* USER CODE INIT END */
     
     Easy_Menu_Goto_Page(PAGE(main_page));
 }
