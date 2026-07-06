@@ -122,11 +122,12 @@ typedef struct Show_Item {
     DATA_TYPE data_type;
     void *data;
 
-    unsigned short int period;  
-    
-    unsigned int last_tick;  
-    
+    unsigned short int period;
+
+    unsigned int last_tick;
+
     void (*Callback)(void);
+    void (*format)(void *data, char *buf, int buf_size); // 自定义格式化回调，NULL 时使用默认
 } Show_Item;
 // ------ 相关函数
 void Show_Item_Init(Page *parent_page, Item *item, char *text, DATA_TYPE data_type, void *data, unsigned short int period, void (*Callback)(void));

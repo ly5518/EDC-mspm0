@@ -150,6 +150,13 @@ void Ordinary_Page_Enter(void)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:
@@ -257,6 +264,13 @@ void Ordinary_Page_Enter(void)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, display_line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:
@@ -333,7 +347,14 @@ void Ordinary_Page_Display(void)
                 
                 Easy_Menu_Area_Clear(1, EASY_MENU_COL_MAX_NUM, line, line);
                 Easy_Menu_Display_String(1, line, ordinary_page->items[item_index]->text);
-                
+
+                if(show_item->format != NULL)
+                {
+                    char _fmt_buf[32];
+                    show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                    Easy_Menu_Printf(-1, line, "[%s]", _fmt_buf);
+                }
+                else
                 switch(show_item->data_type)
                 {
                     case UNSIGNED_CHAR:
@@ -358,7 +379,7 @@ void Ordinary_Page_Display(void)
                         Easy_Menu_Printf(-1, line, "[%.2f]", *((float*)(show_item->data)));
                         break;
                 }
-                
+
                 Easy_Menu_All_Update();
             }
         }
@@ -623,6 +644,13 @@ void Ordinary_Page_Input(Easy_Menu_Input_TYPE user_input)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:
@@ -729,6 +757,13 @@ void Ordinary_Page_Input(Easy_Menu_Input_TYPE user_input)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, display_line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:
@@ -866,6 +901,13 @@ void Ordinary_Page_Refresh(void)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:
@@ -973,6 +1015,13 @@ void Ordinary_Page_Refresh(void)
                 case SHOW_ITEM:
                 {
                     Show_Item *show_item = (Show_Item*)ordinary_page->items[ordinary_page->items_index + line];
+                    if(show_item->format != NULL)
+                    {
+                        char _fmt_buf[32];
+                        show_item->format(show_item->data, _fmt_buf, sizeof(_fmt_buf));
+                        Easy_Menu_Printf(-1, display_line, "[%s]", _fmt_buf);
+                    }
+                    else
                     switch(show_item->data_type)
                     {
                         case UNSIGNED_CHAR:

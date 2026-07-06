@@ -8,7 +8,7 @@
 #include "LED.h"
 
 extern float ypr[3];
-extern uint8_t gray_digital_show;
+extern char gray_digital_str[9];
 extern unsigned short gray_analog[8]; // ԭʼģ��������
 extern uint16_t gray_white_ref[8];    // �׳��ο�ֵ
 extern uint16_t gray_black_ref[8];    // �ڳ��ο�ֵ
@@ -333,7 +333,7 @@ void Data_Show__Pitch_Callback(void)
 void Gray_Digital_Callback(void)
 {
     /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.gray_digital_data = gray_digital_show;
+    // format 回调直接引用 gray_digital_str，无需赋值
     /* USER CODE END */
 }
 
@@ -416,6 +416,14 @@ const char ch[4] = {'|', '/', '-', '\\'};
 unsigned char show_page_len = 0;
 unsigned char show_page_index = 0;
 unsigned char ch_index = 0;
+
+/* 灰度 digital 二进制格式化：直接拷贝 empty.c 生成的二进制字符串 */
+void Gray_Digital_Format(void *data, char *buf, int buf_size)
+{
+    (void)data;
+    strncpy(buf, gray_digital_str, buf_size - 1);
+    buf[buf_size - 1] = '\0';
+}
 /* USER CODE VALUE END */
 /* Private function ----------------------------------------------------------*/
 void Start_Page_Enter_Callback(void)
@@ -673,4 +681,8 @@ void Easy_Menu_Ui_Init(void)
         Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
     
     Easy_Menu_Goto_Page(PAGE(main_page));
+
+    /* USER CODE INIT BEGIN */
+    gray_digital.format = Gray_Digital_Format;
+    /* USER CODE INIT END */
 }

@@ -31,7 +31,7 @@ unsigned short gray_analog[8];    // 原始模拟量缓存
 uint16_t gray_white_ref[8]; // 白场参考值
 uint16_t gray_black_ref[8]; // 黑场参考值
 uint16_t gray_threshold[8]; // 灰度阈值
-uint8_t gray_digital_show;
+char gray_digital_str[9]; // 灰度二进制字符串 "10101001"
 
 /* ================================================================ 校准状态 ================================================================ */
 #define CAL_STATE_IDLE      0
@@ -211,12 +211,13 @@ int main(void)
             // 校准增量采集（非阻塞，每次 1 个样本）
             Gray_Cal_Collect_Incremental();
 
-            // 使用校准阈值进行二值化，未校准时回退到 2000
+            // 使用校准阈值进行二值化，直接生成二进制字符串（MSB 在左：bit7 bit6 ... bit0）
             for (int i = 0; i < 8; i++)
             {
                 unsigned short th = (gray_threshold[i] > 0) ? gray_threshold[i] : 2000;
-                gray_digital_show = (gray_analog[i] > th) ? (gray_digital_show | (1 << i)) : (gray_digital_show & ~(1 << i));
+                gray_digital_str[7 - i] = (gray_analog[i] > th) ? '1' : '0';
             }
+            gray_digital_str[8] = '\0';
 
             Easy_Menu_Display_Refresh(); // 刷新当前页面（更新 Text_Item 显示）
         }

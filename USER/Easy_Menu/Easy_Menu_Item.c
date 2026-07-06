@@ -379,6 +379,7 @@ void Show_Item_Init(Page *parent_page, Item *item, char *text, DATA_TYPE data_ty
     show_item->last_tick = 0;
 
     show_item->Callback = Callback;
+    show_item->format = NULL;
 }
 /* ================================================================= 跳转条目 ================================================================= */
 void Goto_Item_Init(Page *parent_page, Item *item, char *text, Page *target_page)
