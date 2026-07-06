@@ -14,7 +14,8 @@ extern uint16_t gray_white_ref[8];    // �׳��ο�ֵ
 extern uint16_t gray_black_ref[8];    // �ڳ��ο�ֵ
 extern uint16_t gray_threshold[8];
 extern void Gray_White_Cal_Start(void);
-extern void Gray_Black_Cal_Start(void);    // �Ҷ���ֵ;
+extern void Gray_Black_Cal_Start(void);
+void Gray_Digital_Format(void *data, char *buf, int buf_size);    // �Ҷ���ֵ;
 /* USER CODE PUBLIC END */
 
 /* ================================================================= 占位变量 ================================================================= */
@@ -333,7 +334,8 @@ void Data_Show__Pitch_Callback(void)
 void Gray_Digital_Callback(void)
 {
     /* USER CODE BEGIN */
-    // format 回调直接引用 gray_digital_str，无需赋值
+    if (gray_digital.format == NULL)
+        gray_digital.format = Gray_Digital_Format;
     /* USER CODE END */
 }
 
@@ -681,8 +683,4 @@ void Easy_Menu_Ui_Init(void)
         Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
     
     Easy_Menu_Goto_Page(PAGE(main_page));
-
-    /* USER CODE INIT BEGIN */
-    gray_digital.format = Gray_Digital_Format;
-    /* USER CODE INIT END */
 }
