@@ -144,19 +144,40 @@ extern "C" {
 
 
 
-/* Defines for SPI */
-#define SPI_INST                                                           SPI1
-#define SPI_INST_IRQHandler                                     SPI1_IRQHandler
-#define SPI_INST_INT_IRQN                                         SPI1_INT_IRQn
-#define GPIO_SPI_PICO_PORT                                                GPIOB
-#define GPIO_SPI_PICO_PIN                                         DL_GPIO_PIN_8
-#define GPIO_SPI_IOMUX_PICO                                     (IOMUX_PINCM25)
-#define GPIO_SPI_IOMUX_PICO_FUNC                     IOMUX_PINCM25_PF_SPI1_PICO
-/* GPIO configuration for SPI */
-#define GPIO_SPI_SCLK_PORT                                                GPIOB
-#define GPIO_SPI_SCLK_PIN                                         DL_GPIO_PIN_9
-#define GPIO_SPI_IOMUX_SCLK                                     (IOMUX_PINCM26)
-#define GPIO_SPI_IOMUX_SCLK_FUNC                     IOMUX_PINCM26_PF_SPI1_SCLK
+/* Defines for SPI_LCD */
+#define SPI_LCD_INST                                                       SPI1
+#define SPI_LCD_INST_IRQHandler                                 SPI1_IRQHandler
+#define SPI_LCD_INST_INT_IRQN                                     SPI1_INT_IRQn
+#define GPIO_SPI_LCD_PICO_PORT                                            GPIOB
+#define GPIO_SPI_LCD_PICO_PIN                                     DL_GPIO_PIN_8
+#define GPIO_SPI_LCD_IOMUX_PICO                                 (IOMUX_PINCM25)
+#define GPIO_SPI_LCD_IOMUX_PICO_FUNC                 IOMUX_PINCM25_PF_SPI1_PICO
+/* GPIO configuration for SPI_LCD */
+#define GPIO_SPI_LCD_SCLK_PORT                                            GPIOB
+#define GPIO_SPI_LCD_SCLK_PIN                                     DL_GPIO_PIN_9
+#define GPIO_SPI_LCD_IOMUX_SCLK                                 (IOMUX_PINCM26)
+#define GPIO_SPI_LCD_IOMUX_SCLK_FUNC                 IOMUX_PINCM26_PF_SPI1_SCLK
+/* Defines for SPI_nrf24l01 */
+#define SPI_nrf24l01_INST                                                  SPI0
+#define SPI_nrf24l01_INST_IRQHandler                            SPI0_IRQHandler
+#define SPI_nrf24l01_INST_INT_IRQN                                SPI0_INT_IRQn
+#define GPIO_SPI_nrf24l01_PICO_PORT                                       GPIOA
+#define GPIO_SPI_nrf24l01_PICO_PIN                               DL_GPIO_PIN_14
+#define GPIO_SPI_nrf24l01_IOMUX_PICO                            (IOMUX_PINCM36)
+#define GPIO_SPI_nrf24l01_IOMUX_PICO_FUNC            IOMUX_PINCM36_PF_SPI0_PICO
+#define GPIO_SPI_nrf24l01_POCI_PORT                                       GPIOA
+#define GPIO_SPI_nrf24l01_POCI_PIN                               DL_GPIO_PIN_13
+#define GPIO_SPI_nrf24l01_IOMUX_POCI                            (IOMUX_PINCM35)
+#define GPIO_SPI_nrf24l01_IOMUX_POCI_FUNC            IOMUX_PINCM35_PF_SPI0_POCI
+/* GPIO configuration for SPI_nrf24l01 */
+#define GPIO_SPI_nrf24l01_SCLK_PORT                                       GPIOA
+#define GPIO_SPI_nrf24l01_SCLK_PIN                               DL_GPIO_PIN_12
+#define GPIO_SPI_nrf24l01_IOMUX_SCLK                            (IOMUX_PINCM34)
+#define GPIO_SPI_nrf24l01_IOMUX_SCLK_FUNC            IOMUX_PINCM34_PF_SPI0_SCLK
+#define GPIO_SPI_nrf24l01_CS3_PORT                                        GPIOA
+#define GPIO_SPI_nrf24l01_CS3_PIN                                DL_GPIO_PIN_23
+#define GPIO_SPI_nrf24l01_IOMUX_CS3                             (IOMUX_PINCM53)
+#define GPIO_SPI_nrf24l01_IOMUX_CS3_FUNC     IOMUX_PINCM53_PF_SPI0_CS3_CD_POCI3
 
 
 
@@ -228,14 +249,22 @@ extern "C" {
 #define Gray_Address_PIN_2_PIN                                  (DL_GPIO_PIN_15)
 #define Gray_Address_PIN_2_IOMUX                                 (IOMUX_PINCM37)
 /* Port definition for Pin Group NRF24L01 */
-#define NRF24L01_PORT                                                    (GPIOB)
+#define NRF24L01_PORT                                                    (GPIOA)
 
-/* Defines for CE: GPIOB.13 with pinCMx 30 on package pin 1 */
-#define NRF24L01_CE_PIN                                         (DL_GPIO_PIN_13)
-#define NRF24L01_CE_IOMUX                                        (IOMUX_PINCM30)
-/* Defines for CSN: GPIOB.15 with pinCMx 32 on package pin 3 */
-#define NRF24L01_CSN_PIN                                        (DL_GPIO_PIN_15)
-#define NRF24L01_CSN_IOMUX                                       (IOMUX_PINCM32)
+/* Defines for CE_nrf24l01: GPIOA.21 with pinCMx 46 on package pin 17 */
+#define NRF24L01_CE_nrf24l01_PIN                                (DL_GPIO_PIN_21)
+#define NRF24L01_CE_nrf24l01_IOMUX                               (IOMUX_PINCM46)
+/* Defines for CS_nrf24l01: GPIOA.24 with pinCMx 54 on package pin 25 */
+#define NRF24L01_CS_nrf24l01_PIN                                (DL_GPIO_PIN_24)
+#define NRF24L01_CS_nrf24l01_IOMUX                               (IOMUX_PINCM54)
+/* Defines for IRQ: GPIOA.22 with pinCMx 47 on package pin 18 */
+// groups represented: ["ENCODERA","NRF24L01"]
+// pins affected: ["E1A","E1B","IRQ"]
+#define GPIO_MULTIPLE_GPIOA_INT_IRQN                            (GPIOA_INT_IRQn)
+#define GPIO_MULTIPLE_GPIOA_INT_IIDX            (DL_INTERRUPT_GROUP1_IIDX_GPIOA)
+#define NRF24L01_IRQ_IIDX                                   (DL_GPIO_IIDX_DIO22)
+#define NRF24L01_IRQ_PIN                                        (DL_GPIO_PIN_22)
+#define NRF24L01_IRQ_IOMUX                                       (IOMUX_PINCM47)
 /* Port definition for Pin Group IIC_Software */
 #define IIC_Software_PORT                                                (GPIOA)
 
@@ -249,9 +278,6 @@ extern "C" {
 #define ENCODERA_PORT                                                    (GPIOA)
 
 /* Defines for E1A: GPIOA.25 with pinCMx 55 on package pin 26 */
-// pins affected by this interrupt request:["E1A","E1B"]
-#define ENCODERA_INT_IRQN                                       (GPIOA_INT_IRQn)
-#define ENCODERA_INT_IIDX                       (DL_INTERRUPT_GROUP1_IIDX_GPIOA)
 #define ENCODERA_E1A_IIDX                                   (DL_GPIO_IIDX_DIO25)
 #define ENCODERA_E1A_PIN                                        (DL_GPIO_PIN_25)
 #define ENCODERA_E1A_IOMUX                                       (IOMUX_PINCM55)
@@ -283,7 +309,8 @@ void SYSCFG_DL_PWM_0_init(void);
 void SYSCFG_DL_PWM_1_init(void);
 void SYSCFG_DL_TIMER_1_init(void);
 void SYSCFG_DL_UART_0_init(void);
-void SYSCFG_DL_SPI_init(void);
+void SYSCFG_DL_SPI_LCD_init(void);
+void SYSCFG_DL_SPI_nrf24l01_init(void);
 void SYSCFG_DL_ADC12_0_init(void);
 void SYSCFG_DL_DMA_init(void);
 

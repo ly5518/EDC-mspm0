@@ -4,7 +4,7 @@ extern void func_int_to_str(char *str, int32_t num);
 extern void func_uint_to_str(char *str, uint32_t num);
 extern void func_double_to_str(char *str, double num, uint8_t pointnum);
 
-#define SPI_1_INST SPI_INST
+#define SPI_1_INST SPI_LCD_INST
 #define LCD_write_8bit_data(data) (ST7735_WriteByte(data))
 #define LCD_write_16bit_data(data) (ST7735_Write2Byte(data))
 

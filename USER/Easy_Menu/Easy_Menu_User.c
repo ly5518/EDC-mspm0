@@ -9,13 +9,13 @@
 
 extern float ypr[3];
 extern char gray_digital_str[9];
-extern unsigned short gray_analog[8]; // ԭʼģ��������
-extern uint16_t gray_white_ref[8];    // �׳��ο�ֵ
-extern uint16_t gray_black_ref[8];    // �ڳ��ο�ֵ
-extern uint16_t gray_threshold[8];
+extern unsigned short gray_analog[8]; // 原始模拟量数据
+extern uint16_t gray_white_ref[8];    // 白色参考值
+extern uint16_t gray_black_ref[8];    // 黑色参考值
+extern uint16_t gray_threshold[8];    // 灰度阈值
 extern void Gray_White_Cal_Start(void);
 extern void Gray_Black_Cal_Start(void);
-void Gray_Digital_Format(void *data, char *buf, int buf_size);    // �Ҷ���ֵ;
+void Gray_Digital_Format(void *data, char *buf, int buf_size);    // 灰度数字值
 /* USER CODE PUBLIC END */
 
 /* ================================================================= 占位变量 ================================================================= */
@@ -49,6 +49,7 @@ struct {
     unsigned short int CH8_data;
     unsigned char gray_white_cal;
     unsigned char gray_black_cal;
+    unsigned char gray__12__item__data;
 } Easy_Menu_Ui_Data = {
     .LED1__data = 0,
     .LED2__data = 0,
@@ -79,6 +80,7 @@ struct {
     .CH8_data = 0,
     .gray_white_cal = 0,
     .gray_black_cal = 0,
+    .gray__12__item__data = 0,
 };
 /* ============================================================== 页面、条目定义 ============================================================== */    
 Ordinary_Page main_page;
@@ -148,6 +150,7 @@ Ordinary_Page main_page;
         Show_Item CH8;
         Switch_Item gray_white_cal;
         Switch_Item gray_black_cal;
+        Show_Item gray__12__item;
 /* ================================================================= 枚举列表 ================================================================= */
 char *mode_enum_str[3] = {
     "Static",
@@ -236,7 +239,7 @@ void Data_Page__4__Item_Callback(void *data) // *((signed char*)data)
 void Data_Page__5__Item_Callback(void *data) // *((signed short int*)data)
 {
     /* USER CODE BEGIN */
-
+    printf("Data_Page__5__Item_Callback:%d\n", *((signed short int*)data));
     /* USER CODE END */
 }
 
@@ -408,6 +411,13 @@ void Gray_Black_Cal_Callback(unsigned char data)
     /* USER CODE BEGIN */
     if (data == 1)
         Gray_Black_Cal_Start();
+    /* USER CODE END */
+}
+
+void Gray__12__Item_Callback(void)
+{
+    /* USER CODE BEGIN */
+
     /* USER CODE END */
 }
 
@@ -583,7 +593,7 @@ Item *Data_Show_items[3] = {
     ITEM(Data_Show__pitch)
 };
 
-Item *Gray_items[11] = {
+Item *Gray_items[12] = {
     ITEM(gray_digital),
     ITEM(CH1),
     ITEM(CH2),
@@ -594,7 +604,8 @@ Item *Gray_items[11] = {
     ITEM(CH7),
     ITEM(CH8),
     ITEM(gray_white_cal),
-    ITEM(gray_black_cal)
+    ITEM(gray_black_cal),
+    ITEM(gray__12__item)
 };
 
 /* ================================================================ 系统初始化 ================================================================ */
@@ -669,7 +680,7 @@ void Easy_Menu_Ui_Init(void)
         Show_Item_Init(PAGE(Data_Show), ITEM(Data_Show__roll), "roll", FLOAT, &Easy_Menu_Ui_Data.roll, 10, Data_Show__Roll_Callback);
         Show_Item_Init(PAGE(Data_Show), ITEM(Data_Show__pitch), "pitch", FLOAT, &Easy_Menu_Ui_Data.pitch, 10, Data_Show__Pitch_Callback);
 
-    Ordinary_Page_Init(PAGE(main_page), PAGE(Gray), "Gray", Gray_items, 11);
+    Ordinary_Page_Init(PAGE(main_page), PAGE(Gray), "Gray", Gray_items, 12);
         Show_Item_Init(PAGE(Gray), ITEM(gray_digital), "gray_digital", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray_digital_data, 10, Gray_Digital_Callback);
         Show_Item_Init(PAGE(Gray), ITEM(CH1), "CH1", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH1_data, 10, Ch1_Callback);
         Show_Item_Init(PAGE(Gray), ITEM(CH2), "CH2", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH2_data, 10, Ch2_Callback);
@@ -681,6 +692,7 @@ void Easy_Menu_Ui_Init(void)
         Show_Item_Init(PAGE(Gray), ITEM(CH8), "CH8", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH8_data, 10, Ch8_Callback);
         Switch_Item_Init(PAGE(Gray), ITEM(gray_white_cal), "gray_white_cal", &Easy_Menu_Ui_Data.gray_white_cal, Gray_White_Cal_Callback);
         Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
+        Show_Item_Init(PAGE(Gray), ITEM(gray__12__item), "gray__12__item", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray__12__item__data, 100, Gray__12__Item_Callback);
     
     Easy_Menu_Goto_Page(PAGE(main_page));
 }

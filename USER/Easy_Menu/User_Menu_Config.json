@@ -650,6 +650,19 @@
               "回调函数": true,
               "数据变量名": "gray_black_cal"
             }
+          },
+          {
+            "name": "gray__12__item",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "gray__12__item",
+              "变量类型": "uint8_val",
+              "周期": "100",
+              "回调函数": true,
+              "数据变量名": "gray__12__item__data"
+            }
           }
         ]
       }

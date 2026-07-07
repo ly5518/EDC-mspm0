@@ -23,24 +23,25 @@ volatile uint8_t _5ms_flag = 0;  // 5ms 定时标志
 volatile uint8_t _10ms_flag = 0; // 10ms 定时标志
 volatile uint8_t print_flag = 0; // 打印标志（每 100ms）
 volatile uint8_t print_cnt = 0;  // 打印计数器
-int speedA = 0, speedB = 0;      // 编码器速度（每 5ms 的脉冲数）
+int countA = 0, countB = 0;      // 编码器计数(每5ms的编码器计数)
+float speedA = 0, speedB = 0;    
 
 float ypr[3];
-No_MCU_Sensor gray_sensor;        // 灰度传感器结构体
-unsigned short gray_analog[8];    // 原始模拟量缓存
-uint16_t gray_white_ref[8]; // 白场参考值
-uint16_t gray_black_ref[8]; // 黑场参考值
-uint16_t gray_threshold[8]; // 灰度阈值
-char gray_digital_str[9]; // 灰度二进制字符串 "10101001"
+No_MCU_Sensor gray_sensor;     // 灰度传感器结构体
+unsigned short gray_analog[8]; // 原始模拟量缓存
+uint16_t gray_white_ref[8];    // 白场参考值
+uint16_t gray_black_ref[8];    // 黑场参考值
+uint16_t gray_threshold[8];    // 灰度阈值
+char gray_digital_str[9];      // 灰度二进制字符串 "10101001"
 
 /* ================================================================ 校准状态 ================================================================ */
-#define CAL_STATE_IDLE      0
-#define CAL_STATE_WHITE     1
-#define CAL_STATE_BLACK     2
-#define CAL_SAMPLE_NUM_USER 50  // 用户校准采样次数
+#define CAL_STATE_IDLE 0
+#define CAL_STATE_WHITE 1
+#define CAL_STATE_BLACK 2
+#define CAL_SAMPLE_NUM_USER 50 // 用户校准采样次数
 
-static uint8_t  cal_state = CAL_STATE_IDLE;
-static uint8_t  cal_sample_cnt = 0;
+static uint8_t cal_state = CAL_STATE_IDLE;
+static uint8_t cal_sample_cnt = 0;
 static uint32_t cal_sum[8] = {0};
 
 /* 通过 extern 访问 Easy_Menu_User.c 中的数据结构体 */
@@ -89,14 +90,15 @@ static void Gray_Calc_Threshold(void)
         if (gray_white_ref[i] > 0 && gray_black_ref[i] > 0)
             gray_threshold[i] = (gray_white_ref[i] + 2 * gray_black_ref[i]) / 3;
         else
-            gray_threshold[i] = 2000;  // 未校准的默认值
+            gray_threshold[i] = 2000; // 未校准的默认值
     }
 }
 
 /* 白场校准启动（由菜单 Switch 回调调用）*/
 void Gray_White_Cal_Start(void)
 {
-    for (int i = 0; i < 8; i++) cal_sum[i] = 0;
+    for (int i = 0; i < 8; i++)
+        cal_sum[i] = 0;
     cal_sample_cnt = 0;
     cal_state = CAL_STATE_WHITE;
 }
@@ -104,7 +106,8 @@ void Gray_White_Cal_Start(void)
 /* 黑场校准启动（由菜单 Switch 回调调用）*/
 void Gray_Black_Cal_Start(void)
 {
-    for (int i = 0; i < 8; i++) cal_sum[i] = 0;
+    for (int i = 0; i < 8; i++)
+        cal_sum[i] = 0;
     cal_sample_cnt = 0;
     cal_state = CAL_STATE_BLACK;
 }
@@ -112,7 +115,8 @@ void Gray_Black_Cal_Start(void)
 /* 校准增量采集（在主循环 100ms 周期中调用，每次采集 1 个样本）*/
 static void Gray_Cal_Collect_Incremental(void)
 {
-    if (cal_state == CAL_STATE_IDLE) return;
+    if (cal_state == CAL_STATE_IDLE)
+        return;
 
     unsigned short buf[8];
     Get_Analog_value(buf);
@@ -161,13 +165,16 @@ int main(void)
     Set_PWM(2000, -2000);
     while (1)
     {
+        // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
+        Easy_Menu_Display(menu_count);
+
         if (_5ms_flag)
         {
             _5ms_flag = 0;
 
             // 读取编码器速度并清零（每 5ms 一次）
-            speedA = Get_Encoder_countA;
-            speedB = Get_Encoder_countB;
+            countA = Get_Encoder_countA;
+            countB = Get_Encoder_countB;
             Get_Encoder_countA = 0;
             Get_Encoder_countB = 0;
 
@@ -197,9 +204,13 @@ int main(void)
             }
         }
 
-        // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
-        Easy_Menu_Display(menu_count);
-
+        if (_10ms_flag)
+        {
+            _10ms_flag = 0;
+            speedA = Encoder_GetSpeedA(10.0f);
+            speedB = Encoder_GetSpeedB(10.0f);
+            printf("SpeedA: %.1f, SpeedB: %.1f\n", speedA, speedB);
+        }
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
         {
@@ -248,7 +259,7 @@ void TIMER_1_INST_IRQHandler(void)
                 print_flag = 1;
             }
         }
-        if ((count % 100) == 0) // 100 x 100us = 10ms
+        if (count == 100) // 100 x 100us = 10ms
         {
             count = 0;
             _10ms_flag = 1;
