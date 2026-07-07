@@ -3,11 +3,8 @@
 #include "ti_msp_dl_config.h"
 
 void Encoder_Init(void);
-void Encoder_GetCount(int32_t *countA, int32_t *countB);
-float Encoder_GetSpeedA(float dt_ms);
-float Encoder_GetSpeedB(float dt_ms);
+void Encoder_Sample(void);
 
-extern volatile int16_t dirA, dirB;
-extern int32_t encoder_countA, encoder_countB;
+extern volatile float speedA, speedB;
 
 #endif

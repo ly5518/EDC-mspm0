@@ -24,7 +24,6 @@ volatile uint8_t _10ms_flag = 0; // 10ms 定时标志
 volatile uint8_t print_flag = 0; // 打印标志（每 100ms）
 volatile uint8_t print_cnt = 0;  // 打印计数器
 int countA = 0, countB = 0;      // 编码器计数(每5ms的编码器计数)
-float speedA = 0, speedB = 0;    
 
 float ypr[3];
 No_MCU_Sensor gray_sensor;     // 灰度传感器结构体
@@ -200,8 +199,6 @@ int main(void)
         if (_10ms_flag)
         {
             _10ms_flag = 0;
-            speedA = Encoder_GetSpeedA(10.0f);
-            speedB = Encoder_GetSpeedB(10.0f);
             printf("SpeedA: %.1f, SpeedB: %.1f\n", speedA, speedB);
         }
         // 每 100ms 采集灰度并打印模拟量
@@ -236,6 +233,10 @@ void TIMER_1_INST_IRQHandler(void)
     case DL_TIMER_IIDX_ZERO:
         count++;
         nowtime++;
+
+        // 每100us采样一次编码器（同步读取计数+方向，消除竞态条件）
+        Encoder_Sample();
+
         if ((count % 10) == 0) // 10 x 100us = 1ms
         {
             _1ms_flag = 1;
@@ -264,8 +265,32 @@ void TIMER_1_INST_IRQHandler(void)
     }
 }
 
+// GPIO中断处理（按键 + NRF24L01，编码器方向已由定时器ISR同步读取）
+void GROUP1_IRQHandler(void)
+{
+    // ---- GPIOA: NRF24L01 IRQ ----
+    uint32_t statusA = DL_GPIO_getEnabledInterruptStatus(GPIOA, NRF24L01_IRQ_PIN);
+    if (statusA & NRF24L01_IRQ_PIN)
+    {
+        DL_GPIO_clearInterruptStatus(GPIOA, NRF24L01_IRQ_PIN);
+    }
+
+    // ---- GPIOB: 按键 ----
+    uint32_t statusB = DL_GPIO_getEnabledInterruptStatus(GPIOB, KEY_up_PIN);
+    if (statusB & KEY_up_PIN)
+    {
+        DL_GPIO_clearInterruptStatus(GPIOB, KEY_up_PIN);
+    }
+}
+
 void TimeA1_Init(void)
 {
+    // 设置中断优先级：Timer=0(最高), GPIO=1(较低)
+    // 确保编码器采样ISR不被GPIO中断打断，消除竞态条件
+    NVIC_SetPriority(TIMER_1_INST_INT_IRQN, 0);
+    NVIC_SetPriority(GPIO_MULTIPLE_GPIOA_INT_IRQN, 1);
+    NVIC_SetPriority(GPIO_MULTIPLE_GPIOB_INT_IRQN, 1);
+
     NVIC_ClearPendingIRQ(TIMER_1_INST_INT_IRQN);
     NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
 }

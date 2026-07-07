@@ -6,101 +6,52 @@
 #define WHEEL_RADIUS_M 65 // 轮子半径(mm)
 #define WHEEL_CIRCUMFERENCE (2.0f * 3.1415926f * WHEEL_RADIUS_M)
 #define COUNTS_PER_WHEEL_REV (ENCODER_PPR * GEAR_RATIO)
+#define SPEED_CALC_PERIOD 100  // 每100次采样算一次速度（100us x 100 = 10ms）
 
-// ============ 全局变量 ============
-volatile int16_t dirA = 1, dirB = 1;
-int32_t encoder_countA = 0, encoder_countB = 0;
+// ============ 全局变量（主循环直接读取）============
+volatile float speedA = 0, speedB = 0;
+
+static int32_t encoder_countA = 0, encoder_countB = 0;
+static uint8_t sample_cnt = 0;
 
 // ============ 初始化函数 ============
 void Encoder_Init(void)
 {
-  // ---- Encoder A: PA26 (E1B) TIMG8硬件计数, PA25 (E1A) GPIO方向 ----
-  // SysConfig已配置TIMG8和PA26，这里只需配置PA25方向中断
-
-  // PA25 GPIO输入
   DL_GPIO_initDigitalInputFeatures(IOMUX_PINCM55,
       DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
       DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-  // PA25 双边沿中断（方向检测）
-  DL_GPIO_setUpperPinsPolarity(GPIOA, DL_GPIO_PIN_25_EDGE_RISE_FALL);
-  DL_GPIO_clearInterruptStatus(GPIOA, DL_GPIO_PIN_25);
-  DL_GPIO_enableInterrupt(GPIOA, DL_GPIO_PIN_25);
-
-  // ---- Encoder B: PB20 (E2A) TIMG12硬件计数, PB24 (E2B) GPIO方向 ----
-  // SysConfig已配置TIMG12和PB20，这里只需配置PB24方向中断
-
-  // PB24 GPIO输入
   DL_GPIO_initDigitalInputFeatures(IOMUX_PINCM52,
       DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
       DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-  // PB24 双边沿中断（方向检测）
-  DL_GPIO_setUpperPinsPolarity(GPIOB, DL_GPIO_PIN_24_EDGE_RISE_FALL);
-  DL_GPIO_clearInterruptStatus(GPIOB, DL_GPIO_PIN_24 | KEY_up_PIN);
-  DL_GPIO_enableInterrupt(GPIOB, DL_GPIO_PIN_24);
-
-  // 使能NVIC中断
-  NVIC_ClearPendingIRQ(GPIO_MULTIPLE_GPIOA_INT_IRQN);
-  NVIC_ClearPendingIRQ(GPIO_MULTIPLE_GPIOB_INT_IRQN);
-  NVIC_EnableIRQ(GPIO_MULTIPLE_GPIOA_INT_IRQN);
-  NVIC_EnableIRQ(GPIO_MULTIPLE_GPIOB_INT_IRQN);
 }
 
-// ============ 中断处理函数 ============
-// 只处理方向中断，计数由硬件定时器完成
-void GROUP1_IRQHandler(void)
+// ============ 编码器采样+速度计算（在TIMER_1 ISR中调用，每100us）============
+// 每次调用：读硬件计数器累加
+// 每100次（10ms）：计算速度并更新全局变量
+void Encoder_Sample(void)
 {
-  // ---- GPIOA: Encoder A方向 (PA25) ----
-  uint32_t statusA = DL_GPIO_getEnabledInterruptStatus(GPIOA, DL_GPIO_PIN_25);
-  if (statusA & DL_GPIO_PIN_25)
-  {
-    dirA = DL_GPIO_readPins(GPIOA, DL_GPIO_PIN_25) ? 1 : -1;
-    DL_GPIO_clearInterruptStatus(GPIOA, DL_GPIO_PIN_25);
-  }
-
-  // ---- GPIOB: Encoder B方向 (PB24) + 按键 ----
-  uint32_t statusB = DL_GPIO_getEnabledInterruptStatus(GPIOB, DL_GPIO_PIN_24 | KEY_up_PIN);
-
-  if (statusB & DL_GPIO_PIN_24)
-  {
-    dirB = DL_GPIO_readPins(GPIOB, DL_GPIO_PIN_24) ? 1 : -1;
-    DL_GPIO_clearInterruptStatus(GPIOB, DL_GPIO_PIN_24);
-  }
-
-  if (statusB & KEY_up_PIN)
-  {
-    DL_GPIO_clearInterruptStatus(GPIOB, KEY_up_PIN);
-  }
-}
-
-// ============ 计算速度 (m/s) ============
-float Encoder_GetSpeedA(float dt_ms)
-{
-  static int32_t last_countA = 0;
-
-  // 读取TIMG8硬件计数器（PA26 E1B）
-  int16_t temp = (int16_t)DL_TimerG_getTimerCount(TIMG8);
+  // ---- 累加硬件计数 ----
+  int16_t cntA = (int16_t)DL_TimerG_getTimerCount(TIMG8);
   DL_TimerG_setTimerCount(TIMG8, 0);
-  encoder_countA += dirA * temp;
+  encoder_countA += cntA;
 
-  int32_t diff = encoder_countA - last_countA;
-  last_countA = encoder_countA;
-
-  return (float)diff / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / (dt_ms / 1000.0f);
-}
-
-float Encoder_GetSpeedB(float dt_ms)
-{
-  static int32_t last_countB = 0;
-
-  // 读取TIMG12硬件计数器（PB20 E2A）
-  int16_t temp = (int16_t)DL_TimerG_getTimerCount(TIMG12);
+  int16_t cntB = (int16_t)DL_TimerG_getTimerCount(TIMG12);
   DL_TimerG_setTimerCount(TIMG12, 0);
-  encoder_countB += dirB * temp;
+  encoder_countB += cntB;
 
-  int32_t diff = encoder_countB - last_countB;
-  last_countB = encoder_countB;
+  // ---- 每10ms计算一次速度 ----
+  if (++sample_cnt >= SPEED_CALC_PERIOD)
+  {
+    sample_cnt = 0;
 
-  return (float)diff / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / (dt_ms / 1000.0f);
+    static int32_t last_countA = 0, last_countB = 0;
+
+    int32_t diffA = encoder_countA - last_countA;
+    last_countA = encoder_countA;
+    speedA = (float)diffA / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.01f;
+
+    int32_t diffB = encoder_countB - last_countB;
+    last_countB = encoder_countB;
+    speedB = (float)diffB / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.01f;
+  }
 }
