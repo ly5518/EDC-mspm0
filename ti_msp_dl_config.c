@@ -58,6 +58,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_SYSCTL_init();
     SYSCFG_DL_PWM_0_init();
     SYSCFG_DL_PWM_1_init();
+    SYSCFG_DL_ENCODER1_init();
+    SYSCFG_DL_ENCODER2_init();
     SYSCFG_DL_TIMER_1_init();
     SYSCFG_DL_UART_0_init();
     SYSCFG_DL_SPI_LCD_init();
@@ -68,6 +70,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     /* Ensure backup structures have no valid state */
 	gPWM_0Backup.backupRdy 	= false;
 	gPWM_1Backup.backupRdy 	= false;
+
 	gTIMER_1Backup.backupRdy 	= false;
 
 	gSPI_LCDBackup.backupRdy 	= false;
@@ -111,6 +114,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_GPIO_reset(GPIOB);
     DL_TimerA_reset(PWM_0_INST);
     DL_TimerA_reset(PWM_1_INST);
+    DL_TimerG_reset(ENCODER1_INST);
+    DL_TimerG_reset(ENCODER2_INST);
     DL_TimerG_reset(TIMER_1_INST);
     DL_UART_Main_reset(UART_0_INST);
     DL_SPI_reset(SPI_LCD_INST);
@@ -123,6 +128,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_GPIO_enablePower(GPIOB);
     DL_TimerA_enablePower(PWM_0_INST);
     DL_TimerA_enablePower(PWM_1_INST);
+    DL_TimerG_enablePower(ENCODER1_INST);
+    DL_TimerG_enablePower(ENCODER2_INST);
     DL_TimerG_enablePower(TIMER_1_INST);
     DL_UART_Main_enablePower(UART_0_INST);
     DL_SPI_enablePower(SPI_LCD_INST);
@@ -145,6 +152,9 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
     DL_GPIO_initPeripheralOutputFunction(GPIO_PWM_1_C1_IOMUX,GPIO_PWM_1_C1_IOMUX_FUNC);
     DL_GPIO_enableOutput(GPIO_PWM_1_C1_PORT, GPIO_PWM_1_C1_PIN);
 
+    DL_GPIO_initPeripheralInputFunction(GPIO_ENCODER1_C0_IOMUX,GPIO_ENCODER1_C0_IOMUX_FUNC);
+    DL_GPIO_initPeripheralInputFunction(GPIO_ENCODER2_C0_IOMUX,GPIO_ENCODER2_C0_IOMUX_FUNC);
+
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_UART_0_IOMUX_TX, GPIO_UART_0_IOMUX_TX_FUNC);
     DL_GPIO_initPeripheralInputFunction(
@@ -166,6 +176,14 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
     DL_GPIO_initDigitalOutputFeatures(LED_B22_IOMUX,
 		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_DOWN,
 		 DL_GPIO_DRIVE_STRENGTH_LOW, DL_GPIO_HIZ_DISABLE);
+
+    DL_GPIO_initDigitalInputFeatures(ENCODER1_DIR_PIN_ENCODER1_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+
+    DL_GPIO_initDigitalInputFeatures(ENCODER2_DIR_PIN_ENCODER2_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 
     DL_GPIO_initDigitalInputFeatures(KEY_up_IOMUX,
 		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
@@ -209,22 +227,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 
     DL_GPIO_initDigitalOutput(IIC_Software_SCL_IOMUX);
 
-    DL_GPIO_initDigitalInputFeatures(ENCODERA_E1A_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-    DL_GPIO_initDigitalInputFeatures(ENCODERA_E1B_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-    DL_GPIO_initDigitalInputFeatures(ENCODERB_E2A_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-    DL_GPIO_initDigitalInputFeatures(ENCODERB_E2B_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
     DL_GPIO_clearPins(GPIOA, Gray_Address_PIN_0_PIN |
 		Gray_Address_PIN_1_PIN |
 		Gray_Address_PIN_2_PIN |
@@ -239,15 +241,12 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 		NRF24L01_CS_nrf24l01_PIN |
 		IIC_Software_SDA_PIN |
 		IIC_Software_SCL_PIN);
-    DL_GPIO_setUpperPinsPolarity(GPIOA, DL_GPIO_PIN_22_EDGE_FALL |
-		DL_GPIO_PIN_25_EDGE_RISE |
-		DL_GPIO_PIN_26_EDGE_RISE);
-    DL_GPIO_clearInterruptStatus(GPIOA, NRF24L01_IRQ_PIN |
-		ENCODERA_E1A_PIN |
-		ENCODERA_E1B_PIN);
-    DL_GPIO_enableInterrupt(GPIOA, NRF24L01_IRQ_PIN |
-		ENCODERA_E1A_PIN |
-		ENCODERA_E1B_PIN);
+    DL_GPIO_setUpperPinsPolarity(GPIOA, DL_GPIO_PIN_25_EDGE_RISE_FALL |
+		DL_GPIO_PIN_22_EDGE_FALL);
+    DL_GPIO_clearInterruptStatus(GPIOA, ENCODER1_DIR_PIN_ENCODER1_PIN |
+		NRF24L01_IRQ_PIN);
+    DL_GPIO_enableInterrupt(GPIOA, ENCODER1_DIR_PIN_ENCODER1_PIN |
+		NRF24L01_IRQ_PIN);
     DL_GPIO_clearPins(GPIOB, LED_B22_PIN);
     DL_GPIO_setPins(GPIOB, LCD_RES_PIN |
 		LCD_DC_PIN |
@@ -258,15 +257,12 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 		LCD_DC_PIN |
 		LCD_CS_PIN |
 		LCD_BLK_PIN);
-    DL_GPIO_setUpperPinsPolarity(GPIOB, DL_GPIO_PIN_21_EDGE_FALL |
-		DL_GPIO_PIN_20_EDGE_RISE |
-		DL_GPIO_PIN_24_EDGE_RISE);
-    DL_GPIO_clearInterruptStatus(GPIOB, KEY_up_PIN |
-		ENCODERB_E2A_PIN |
-		ENCODERB_E2B_PIN);
-    DL_GPIO_enableInterrupt(GPIOB, KEY_up_PIN |
-		ENCODERB_E2A_PIN |
-		ENCODERB_E2B_PIN);
+    DL_GPIO_setUpperPinsPolarity(GPIOB, DL_GPIO_PIN_24_EDGE_RISE_FALL |
+		DL_GPIO_PIN_21_EDGE_FALL);
+    DL_GPIO_clearInterruptStatus(GPIOB, ENCODER2_DIR_PIN_ENCODER2_PIN |
+		KEY_up_PIN);
+    DL_GPIO_enableInterrupt(GPIOB, ENCODER2_DIR_PIN_ENCODER2_PIN |
+		KEY_up_PIN);
 
 }
 
@@ -389,6 +385,76 @@ SYSCONFIG_WEAK void SYSCFG_DL_PWM_1_init(void) {
 
     
     DL_TimerA_setCCPDirection(PWM_1_INST , DL_TIMER_CC0_OUTPUT | DL_TIMER_CC1_OUTPUT );
+
+
+}
+
+
+
+/*
+ * Timer clock configuration to be sourced by LFCLK /  (32768 Hz)
+ * timerClkFreq = (timerClkSrc / (timerClkDivRatio * (timerClkPrescale + 1)))
+ *   32768 Hz = 32768 Hz / (1 * (0 + 1))
+ */
+static const DL_TimerG_ClockConfig gENCODER1ClockConfig = {
+    .clockSel    = DL_TIMER_CLOCK_LFCLK,
+    .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
+    .prescale = 0U
+};
+
+static const DL_TimerG_CompareConfig gENCODER1CompareConfig = {
+    .compareMode    = DL_TIMER_COMPARE_MODE_EDGE_COUNT_UP,
+    .count          = 65535,
+    .startTimer     = DL_TIMER_START,
+    .edgeDetectMode = DL_TIMER_COMPARE_EDGE_DETECTION_MODE_EDGE,
+    .inputChan      = DL_TIMER_INPUT_CHAN_0,
+    .inputInvMode   = DL_TIMER_CC_INPUT_INV_NOINVERT,
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_ENCODER1_init(void) {
+
+    DL_TimerG_setClockConfig(ENCODER1_INST,
+        (DL_TimerG_ClockConfig *) &gENCODER1ClockConfig);
+    DL_TimerG_initCompareMode(ENCODER1_INST,
+        (DL_TimerG_CompareConfig *) &gENCODER1CompareConfig);
+
+    DL_TimerG_enableClock(ENCODER1_INST);
+
+
+
+
+}
+
+/*
+ * Timer clock configuration to be sourced by LFCLK /  (32768 Hz)
+ * timerClkFreq = (timerClkSrc / (timerClkDivRatio * (timerClkPrescale + 1)))
+ *   32768 Hz = 32768 Hz / (1 * (0 + 1))
+ */
+static const DL_TimerG_ClockConfig gENCODER2ClockConfig = {
+    .clockSel    = DL_TIMER_CLOCK_LFCLK,
+    .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
+    .prescale = 0U
+};
+
+static const DL_TimerG_CompareConfig gENCODER2CompareConfig = {
+    .compareMode    = DL_TIMER_COMPARE_MODE_EDGE_COUNT_UP,
+    .count          = 65535,
+    .startTimer     = DL_TIMER_START,
+    .edgeDetectMode = DL_TIMER_COMPARE_EDGE_DETECTION_MODE_EDGE,
+    .inputChan      = DL_TIMER_INPUT_CHAN_0,
+    .inputInvMode   = DL_TIMER_CC_INPUT_INV_NOINVERT,
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_ENCODER2_init(void) {
+
+    DL_TimerG_setClockConfig(ENCODER2_INST,
+        (DL_TimerG_ClockConfig *) &gENCODER2ClockConfig);
+    DL_TimerG_initCompareMode(ENCODER2_INST,
+        (DL_TimerG_CompareConfig *) &gENCODER2CompareConfig);
+
+    DL_TimerG_enableClock(ENCODER2_INST);
+
+
 
 
 }

@@ -116,6 +116,29 @@ extern "C" {
 
 
 
+/* Defines for ENCODER1 */
+#define ENCODER1_INST                                                    (TIMG8)
+#define ENCODER1_INST_IRQHandler                                TIMG8_IRQHandler
+#define ENCODER1_INST_INT_IRQN                                  (TIMG8_INT_IRQn)
+/* GPIO defines for channel 0 */
+#define GPIO_ENCODER1_C0_PORT                                              GPIOA
+#define GPIO_ENCODER1_C0_PIN                                      DL_GPIO_PIN_26
+#define GPIO_ENCODER1_C0_IOMUX                                   (IOMUX_PINCM59)
+#define GPIO_ENCODER1_C0_IOMUX_FUNC                  IOMUX_PINCM59_PF_TIMG8_CCP0
+
+/* Defines for ENCODER2 */
+#define ENCODER2_INST                                                   (TIMG12)
+#define ENCODER2_INST_IRQHandler                               TIMG12_IRQHandler
+#define ENCODER2_INST_INT_IRQN                                 (TIMG12_INT_IRQn)
+/* GPIO defines for channel 0 */
+#define GPIO_ENCODER2_C0_PORT                                              GPIOB
+#define GPIO_ENCODER2_C0_PIN                                      DL_GPIO_PIN_20
+#define GPIO_ENCODER2_C0_IOMUX                                   (IOMUX_PINCM48)
+#define GPIO_ENCODER2_C0_IOMUX_FUNC                 IOMUX_PINCM48_PF_TIMG12_CCP0
+
+
+
+
 /* Defines for TIMER_1 */
 #define TIMER_1_INST                                                     (TIMG7)
 #define TIMER_1_INST_IRQHandler                                 TIMG7_IRQHandler
@@ -201,14 +224,32 @@ extern "C" {
 /* Defines for B22: GPIOB.22 with pinCMx 50 on package pin 21 */
 #define LED_B22_PIN                                             (DL_GPIO_PIN_22)
 #define LED_B22_IOMUX                                            (IOMUX_PINCM50)
+/* Port definition for Pin Group ENCODER1_DIR */
+#define ENCODER1_DIR_PORT                                                (GPIOA)
+
+/* Defines for PIN_ENCODER1: GPIOA.25 with pinCMx 55 on package pin 26 */
+// groups represented: ["NRF24L01","ENCODER1_DIR"]
+// pins affected: ["IRQ","PIN_ENCODER1"]
+#define GPIO_MULTIPLE_GPIOA_INT_IRQN                            (GPIOA_INT_IRQn)
+#define GPIO_MULTIPLE_GPIOA_INT_IIDX            (DL_INTERRUPT_GROUP1_IIDX_GPIOA)
+#define ENCODER1_DIR_PIN_ENCODER1_IIDX                      (DL_GPIO_IIDX_DIO25)
+#define ENCODER1_DIR_PIN_ENCODER1_PIN                           (DL_GPIO_PIN_25)
+#define ENCODER1_DIR_PIN_ENCODER1_IOMUX                          (IOMUX_PINCM55)
+/* Port definition for Pin Group ENCODER2_DIR */
+#define ENCODER2_DIR_PORT                                                (GPIOB)
+
+/* Defines for PIN_ENCODER2: GPIOB.24 with pinCMx 52 on package pin 23 */
+// groups represented: ["KEY","ENCODER2_DIR"]
+// pins affected: ["up","PIN_ENCODER2"]
+#define GPIO_MULTIPLE_GPIOB_INT_IRQN                            (GPIOB_INT_IRQn)
+#define GPIO_MULTIPLE_GPIOB_INT_IIDX            (DL_INTERRUPT_GROUP1_IIDX_GPIOB)
+#define ENCODER2_DIR_PIN_ENCODER2_IIDX                      (DL_GPIO_IIDX_DIO24)
+#define ENCODER2_DIR_PIN_ENCODER2_PIN                           (DL_GPIO_PIN_24)
+#define ENCODER2_DIR_PIN_ENCODER2_IOMUX                          (IOMUX_PINCM52)
 /* Port definition for Pin Group KEY */
 #define KEY_PORT                                                         (GPIOB)
 
 /* Defines for up: GPIOB.21 with pinCMx 49 on package pin 20 */
-// groups represented: ["ENCODERB","KEY"]
-// pins affected: ["E2A","E2B","up"]
-#define GPIO_MULTIPLE_GPIOB_INT_IRQN                            (GPIOB_INT_IRQn)
-#define GPIO_MULTIPLE_GPIOB_INT_IIDX            (DL_INTERRUPT_GROUP1_IIDX_GPIOB)
 #define KEY_up_IIDX                                         (DL_GPIO_IIDX_DIO21)
 #define KEY_up_PIN                                              (DL_GPIO_PIN_21)
 #define KEY_up_IOMUX                                             (IOMUX_PINCM49)
@@ -258,10 +299,6 @@ extern "C" {
 #define NRF24L01_CS_nrf24l01_PIN                                (DL_GPIO_PIN_24)
 #define NRF24L01_CS_nrf24l01_IOMUX                               (IOMUX_PINCM54)
 /* Defines for IRQ: GPIOA.22 with pinCMx 47 on package pin 18 */
-// groups represented: ["ENCODERA","NRF24L01"]
-// pins affected: ["E1A","E1B","IRQ"]
-#define GPIO_MULTIPLE_GPIOA_INT_IRQN                            (GPIOA_INT_IRQn)
-#define GPIO_MULTIPLE_GPIOA_INT_IIDX            (DL_INTERRUPT_GROUP1_IIDX_GPIOA)
 #define NRF24L01_IRQ_IIDX                                   (DL_GPIO_IIDX_DIO22)
 #define NRF24L01_IRQ_PIN                                        (DL_GPIO_PIN_22)
 #define NRF24L01_IRQ_IOMUX                                       (IOMUX_PINCM47)
@@ -274,28 +311,6 @@ extern "C" {
 /* Defines for SCL: GPIOA.1 with pinCMx 2 on package pin 34 */
 #define IIC_Software_SCL_PIN                                     (DL_GPIO_PIN_1)
 #define IIC_Software_SCL_IOMUX                                    (IOMUX_PINCM2)
-/* Port definition for Pin Group ENCODERA */
-#define ENCODERA_PORT                                                    (GPIOA)
-
-/* Defines for E1A: GPIOA.25 with pinCMx 55 on package pin 26 */
-#define ENCODERA_E1A_IIDX                                   (DL_GPIO_IIDX_DIO25)
-#define ENCODERA_E1A_PIN                                        (DL_GPIO_PIN_25)
-#define ENCODERA_E1A_IOMUX                                       (IOMUX_PINCM55)
-/* Defines for E1B: GPIOA.26 with pinCMx 59 on package pin 30 */
-#define ENCODERA_E1B_IIDX                                   (DL_GPIO_IIDX_DIO26)
-#define ENCODERA_E1B_PIN                                        (DL_GPIO_PIN_26)
-#define ENCODERA_E1B_IOMUX                                       (IOMUX_PINCM59)
-/* Port definition for Pin Group ENCODERB */
-#define ENCODERB_PORT                                                    (GPIOB)
-
-/* Defines for E2A: GPIOB.20 with pinCMx 48 on package pin 19 */
-#define ENCODERB_E2A_IIDX                                   (DL_GPIO_IIDX_DIO20)
-#define ENCODERB_E2A_PIN                                        (DL_GPIO_PIN_20)
-#define ENCODERB_E2A_IOMUX                                       (IOMUX_PINCM48)
-/* Defines for E2B: GPIOB.24 with pinCMx 52 on package pin 23 */
-#define ENCODERB_E2B_IIDX                                   (DL_GPIO_IIDX_DIO24)
-#define ENCODERB_E2B_PIN                                        (DL_GPIO_PIN_24)
-#define ENCODERB_E2B_IOMUX                                       (IOMUX_PINCM52)
 
 
 
@@ -307,6 +322,8 @@ void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_PWM_0_init(void);
 void SYSCFG_DL_PWM_1_init(void);
+void SYSCFG_DL_ENCODER1_init(void);
+void SYSCFG_DL_ENCODER2_init(void);
 void SYSCFG_DL_TIMER_1_init(void);
 void SYSCFG_DL_UART_0_init(void);
 void SYSCFG_DL_SPI_LCD_init(void);

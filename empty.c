@@ -153,7 +153,6 @@ int main(void)
                    LCD_Display_Chinese_Char_Line);
 
     Motor_Init();
-    Encoder_Init();
 
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -162,7 +161,7 @@ int main(void)
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
 
-    Set_PWM(2000, -2000);
+    Set_PWM(8000, 8000);
     while (1)
     {
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
@@ -171,12 +170,6 @@ int main(void)
         if (_5ms_flag)
         {
             _5ms_flag = 0;
-
-            // 读取编码器速度并清零（每 5ms 一次）
-            countA = Get_Encoder_countA;
-            countB = Get_Encoder_countB;
-            Get_Encoder_countA = 0;
-            Get_Encoder_countB = 0;
 
             IMU_getYawPitchRoll(ypr);
         }
