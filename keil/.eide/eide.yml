@@ -69,7 +69,6 @@ targets:
         - ../USER/Easy_Menu
         - ../USER/Key
         - ../USER/LED
-        - ../USER/PID
       libList: []
     excludeList: []
     settings:
