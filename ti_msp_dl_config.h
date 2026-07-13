@@ -41,7 +41,6 @@
 #define ti_msp_dl_config_h
 
 #define CONFIG_MSPM0G350X
-#define CONFIG_MSPM0G3507
 
 #if defined(__ti_version__) || defined(__TI_COMPILER_VERSION__)
 #define SYSCONFIG_WEAK __attribute__((weak))
@@ -114,6 +113,18 @@ extern "C" {
 #define GPIO_PWM_1_C1_IOMUX_FUNC                     IOMUX_PINCM20_PF_TIMA0_CCP1
 #define GPIO_PWM_1_C1_IDX                                    DL_TIMER_CC_1_INDEX
 
+/* Defines for PWM_SG90 */
+#define PWM_SG90_INST                                                      TIMG6
+#define PWM_SG90_INST_IRQHandler                                TIMG6_IRQHandler
+#define PWM_SG90_INST_INT_IRQN                                  (TIMG6_INT_IRQn)
+#define PWM_SG90_INST_CLK_FREQ                                            100000
+/* GPIO defines for channel 0 */
+#define GPIO_PWM_SG90_C0_PORT                                              GPIOA
+#define GPIO_PWM_SG90_C0_PIN                                      DL_GPIO_PIN_29
+#define GPIO_PWM_SG90_C0_IOMUX                                    (IOMUX_PINCM4)
+#define GPIO_PWM_SG90_C0_IOMUX_FUNC                   IOMUX_PINCM4_PF_TIMG6_CCP0
+#define GPIO_PWM_SG90_C0_IDX                                 DL_TIMER_CC_0_INDEX
+
 
 
 /* Defines for ENCODER1 */
@@ -149,7 +160,6 @@ extern "C" {
 
 /* Defines for UART_0 */
 #define UART_0_INST                                                        UART0
-#define UART_0_INST_FREQUENCY                                            4000000
 #define UART_0_INST_IRQHandler                                  UART0_IRQHandler
 #define UART_0_INST_INT_IRQN                                      UART0_INT_IRQn
 #define GPIO_UART_0_RX_PORT                                                GPIOA
@@ -210,7 +220,7 @@ extern "C" {
 #define ADC12_0_INST_INT_IRQN                                    (ADC0_INT_IRQn)
 #define ADC12_0_ADCMEM_ADC_CH0                                DL_ADC12_MEM_IDX_0
 #define ADC12_0_ADCMEM_ADC_CH0_REF               DL_ADC12_REFERENCE_VOLTAGE_VDDA
-#define ADC12_0_ADCMEM_ADC_CH0_REF_VOLTAGE_V                                     3.3
+#define ADC12_0_ADCMEM_ADC_CH0_REF_VOLTAGE                                      -1 // VDDA cannot be determined
 #define GPIO_ADC12_0_C0_PORT                                               GPIOA
 #define GPIO_ADC12_0_C0_PIN                                       DL_GPIO_PIN_27
 
@@ -322,6 +332,7 @@ void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_PWM_0_init(void);
 void SYSCFG_DL_PWM_1_init(void);
+void SYSCFG_DL_PWM_SG90_init(void);
 void SYSCFG_DL_ENCODER1_init(void);
 void SYSCFG_DL_ENCODER2_init(void);
 void SYSCFG_DL_TIMER_1_init(void);

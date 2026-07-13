@@ -1,0 +1,8 @@
+# Keil build output
+keil/Listings/
+keil/Objects/
+*.uvguix.*
+keil/.eide/packs/
+
+# SysConfig generated
+*.bak

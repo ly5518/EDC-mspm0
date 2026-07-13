@@ -1,5 +1,6 @@
 #include "board.h"
 #include <stdio.h>
+#include <math.h>
 #include "bsp_spi.h"
 #include "IMU.h"
 #include "LCD.h"
@@ -8,6 +9,7 @@
 #include "Gray.h"
 #include "Easy_Menu.h"
 #include "Key.h"
+#include "bsp_sg90.h"
 
 void TimeA1_Init(void);
 static void LCD_Display_Char(unsigned short int x, unsigned short int y, char ch, unsigned char reverse_flag);
@@ -25,7 +27,92 @@ volatile uint8_t print_flag = 0; // 打印标志（每 100ms）
 volatile uint8_t print_cnt = 0;  // 打印计数器
 int countA = 0, countB = 0;      // 编码器计数(每5ms的编码器计数)
 
+/* ============ 距离计算变量 ============ */
+float distanceA = 0, distanceB = 0;  // 左右轮累计距离(mm)
+float traveled = 0;                   // 净行驶距离(mm)
+float turned = 0;                     // 转过的角度
+volatile uint8_t square_flag = 0;     // 走正方形标志
+
+/* ============ 正方形状态机 ============ */
+typedef enum { SQ_IDLE, SQ_STRAIGHT, SQ_TURN, SQ_DONE } SquareState;
+volatile SquareState sq_state = SQ_IDLE;
+int sq_step = 0;           // 当前第几步（0~3）
+float sq_target = 1000.0f; // 直走目标距离(mm)
+float sq_turn_target = 90.0f; // 转弯目标角度
+float sq_start_yaw = 0;
+
 float ypr[3];
+
+/* ============ 距离更新（每10ms调用） ============ */
+void Update_Distance(void)
+{
+    distanceA += speedA * 0.002f;  // 速度每50ms更新，10ms只算1/5
+    distanceB += speedB * 0.002f;
+    traveled = (distanceA + distanceB) / 2.0f;
+}
+
+/* ============ 重置距离 ============ */
+void Reset_Distance(void)
+{
+    distanceA = 0;
+    distanceB = 0;
+    traveled = 0;
+}
+
+/* ============ 正方形状态机（每10ms调用一次，非阻塞） ============ */
+void Square_Run(void)
+{
+    switch (sq_state)
+    {
+    case SQ_IDLE:
+        break;
+
+    case SQ_STRAIGHT:
+        if (traveled < sq_target)
+        {
+            Set_PWM(-1000, 1000);  // 直走
+        }
+        else
+        {
+            Set_PWM(0, 0);          // 立刻停车
+            delay_ms(100);          // 等车停稳
+            IMU_getYawPitchRoll(ypr);
+            sq_start_yaw = ypr[0];
+            turned = 0;
+            sq_state = SQ_TURN;    // 切换到转弯
+        }
+        break;
+
+    case SQ_TURN:
+        if (turned < sq_turn_target)
+        {
+            Set_PWM(-1000, -1000);  // 右转
+        }
+        else
+        {
+            Set_PWM(0, 0);
+            sq_step++;
+            if (sq_step >= 4)
+            {
+                sq_step = 0;
+                sq_state = SQ_DONE;
+            }
+            else
+            {
+                Reset_Distance();
+                sq_state = SQ_STRAIGHT;
+            }
+        }
+        break;
+
+    case SQ_DONE:
+        Set_PWM(0, 0);
+        sq_state = SQ_IDLE;
+        square_flag = 0;
+        break;
+    }
+}
+
 No_MCU_Sensor gray_sensor;     // 灰度传感器结构体
 unsigned short gray_analog[8]; // 原始模拟量缓存
 uint16_t gray_white_ref[8];    // 白场参考值
@@ -136,13 +223,53 @@ static void Gray_Cal_Collect_Incremental(void)
 /* ================================================================ 主函数 ================================================================ */
 int main(void)
 {
+    // int i = 0;
+
+    // SYSCFG_DL_init();
+
+    // Set_Servo_Angle(0);
+    // delay_ms(1000);
+    // Set_Servo_Angle(45);
+    // delay_ms(1000);
+    // Set_Servo_Angle(90);
+    // delay_ms(1000);
+    // Set_Servo_Angle(135);
+    // delay_ms(1000);
+    // Set_Servo_Angle(180);
+    // delay_ms(1000);
+    // Set_Servo_Angle(135);
+    // delay_ms(1000);
+    // Set_Servo_Angle(90);
+    // delay_ms(1000);
+    // Set_Servo_Angle(45);
+    // delay_ms(1000);
+    // Set_Servo_Angle(0);
+    // delay_ms(1000);
+    // while(1)
+    // {
+    //     // i: 0→180→0，映射成角度
+    //     int angle;
+    //     if(i <= 180)
+    //         angle = i;
+    //     else
+    //         angle = 360 - i;
+
+    //     Set_Servo_Angle(angle);
+    //     delay_ms(10);
+
+    //     i++;
+    //     if(i >= 360) i = 0;
+    // }
+    
+
+
     board_init();
     delay_ms(100);
 
     IMU_init();
     TimeA1_Init();
     LCD_init();
-
+    Set_Servo_Angle(0);
     LCD_set_color(LCD_DEFAULT_PENCOLOR, LCD_DEFAULT_BGCOLOR);
 
     // 初始化 Easy_Menu，绑定 LCD 显示回调（字体 6x8，与 Easy_Menu CHAR_WIDTH=6, CHAR_HEIGHT=8 匹配）
@@ -153,6 +280,7 @@ int main(void)
 
     Motor_Init();
 
+
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
     DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -160,7 +288,6 @@ int main(void)
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
 
-    Set_PWM(8000, 8000);
     while (1)
     {
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
@@ -171,6 +298,8 @@ int main(void)
             _5ms_flag = 0;
 
             IMU_getYawPitchRoll(ypr);
+            if (sq_state == SQ_TURN)
+                turned = fabs(ypr[0] - sq_start_yaw);
         }
 
         // 按键扫描 → 菜单输入
@@ -199,7 +328,18 @@ int main(void)
         if (_10ms_flag)
         {
             _10ms_flag = 0;
-            printf("SpeedA: %.1f, SpeedB: %.1f\n", speedA, speedB);
+            Update_Distance();
+            Square_Run();  // 正方形状态机（非阻塞）
+            printf("state:%d SA:%.1f SB:%.1f dist:%.1f\n", sq_state, speedA, speedB, traveled);
+        }
+
+        // 菜单触发：启动正方形状态机
+        if (square_flag && sq_state == SQ_IDLE)
+        {
+            Velocity_Reset();
+            Reset_Distance();
+            sq_step = 0;
+            sq_state = SQ_STRAIGHT;
         }
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)

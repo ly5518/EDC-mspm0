@@ -6,13 +6,13 @@
 #define WHEEL_RADIUS_M 65 // 轮子半径(mm)
 #define WHEEL_CIRCUMFERENCE (2.0f * 3.1415926f * WHEEL_RADIUS_M)
 #define COUNTS_PER_WHEEL_REV (ENCODER_PPR * GEAR_RATIO)
-#define SPEED_CALC_PERIOD 100  // 每100次采样算一次速度（100us x 100 = 10ms）
+#define SPEED_CALC_PERIOD 500  // 每500次采样算一次速度（100us x 500 = 50ms）
 
 // ============ 全局变量（主循环直接读取）============
 volatile float speedA = 0, speedB = 0;
 
 static int32_t encoder_countA = 0, encoder_countB = 0;
-static uint8_t sample_cnt = 0;
+static uint16_t sample_cnt = 0;
 
 // ============ 初始化函数 ============
 void Encoder_Init(void)
@@ -48,10 +48,10 @@ void Encoder_Sample(void)
 
     int32_t diffA = encoder_countA - last_countA;
     last_countA = encoder_countA;
-    speedA = (float)diffA / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.01f;
+    speedA = (float)diffA / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.05f;  // 50ms
 
     int32_t diffB = encoder_countB - last_countB;
     last_countB = encoder_countB;
-    speedB = (float)diffB / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.01f;
+    speedB = (float)diffB / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.05f;  // 50ms
   }
 }

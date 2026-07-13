@@ -12,6 +12,7 @@ extern int MA_Target_Vel;
 extern int MB_Target_Vel;
 
 void Motor_Init(void);
+void Velocity_Reset(void);
 int Velocity_A(int TargetVelocity, int CurrentVelocity);
 int Velocity_B(int TargetVelocity, int CurrentVelocity);
 void Set_PWM(int pwmL, int pwmR);
