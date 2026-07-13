@@ -11,14 +11,18 @@
 #include "bsp_sg90.h"
 
 extern float ypr[3];
+extern float yaw_angle;
 extern char gray_digital_str[9];
 extern unsigned short gray_analog[8]; // 原始模拟量数据
 extern uint16_t gray_white_ref[8];    // 白色参考值
 extern uint16_t gray_black_ref[8];    // 黑色参考值
 extern uint16_t gray_threshold[8];    // 灰度阈值
+extern int16_t speedA, speedB;            // 编码器速度
 extern void Gray_White_Cal_Start(void);
 extern void Gray_Black_Cal_Start(void);
 void Gray_Digital_Format(void *data, char *buf, int buf_size);    // 灰度数字值
+
+
 /* USER CODE PUBLIC END */
 
 /* ================================================================= 占位变量 ================================================================= */
@@ -370,7 +374,7 @@ void User_Show_Page__4__Item_Callback(void)
 void Data_Show__Yaw_Callback(void)
 {
     /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.yaw = ypr[0];
+    Easy_Menu_Ui_Data.yaw = yaw_angle;
     /* USER CODE END */
 }
 
@@ -469,6 +473,28 @@ void Gray_Black_Cal_Callback(unsigned char data)
 }
 
 void Gray__12__Item_Callback(void)
+{
+    /* USER CODE BEGIN */
+
+    /* USER CODE END */
+}
+
+void Speeda_Callback(void)
+{
+    /* USER CODE BEGIN */
+    Easy_Menu_Ui_Data.SpeedA = speedA;
+    
+    /* USER CODE END */
+}
+
+void Speedb_Callback(void)
+{
+    /* USER CODE BEGIN */
+    Easy_Menu_Ui_Data.SpeedB = speedB;
+    /* USER CODE END */
+}
+
+void Speed_A_Kp_Callback(void *data) // *((unsigned char*)data)
 {
     /* USER CODE BEGIN */
 

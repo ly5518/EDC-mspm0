@@ -3,16 +3,19 @@
 // ============ 编码器参数 ============
 #define ENCODER_PPR 500   // 编码器线数
 #define GEAR_RATIO 28     // 减速比
-#define WHEEL_RADIUS_M 65 // 轮子半径(mm)
-#define WHEEL_CIRCUMFERENCE (2.0f * 3.1415926f * WHEEL_RADIUS_M)
-#define COUNTS_PER_WHEEL_REV (ENCODER_PPR * GEAR_RATIO)
-#define SPEED_CALC_PERIOD 500  // 每500次采样算一次速度（100us x 500 = 50ms）
+#define WHEEL_DIA_MM 65   // 轮子直径(mm)
+#define WHEEL_CIRC_MM 195 //(3.14 * WHEEL_DIA_MM)=204
+#define COUNTS_PER_WHEEL_REV 23333 // 校准值：实际5m走了3m，原14000 * 5/3
+// 速度公式: speed(mm/s) = diff * WHEEL_CIRC_MM / 140
 
-// ============ 全局变量（主循环直接读取）============
-volatile float speedA = 0, speedB = 0;
+// ============ 全局变量 ============
+volatile int16_t speedA = 0, speedB = 0;      //单位: mm/s
+volatile int8_t encoder_dirA = 1, encoder_dirB = -1; // +1正转, -1反转
+volatile uint32_t debug_cntA = 0, debug_cntB = 0; // 调试：原始硬件计数值
 
-static int32_t encoder_countA = 0, encoder_countB = 0;
-static uint16_t sample_cnt = 0;
+// ============ 累计距离 ============
+static int32_t total_countA = 0, total_countB = 0; // 累计编码器脉冲数
+volatile int32_t distA_mm = 0, distB_mm = 0;       // 累计距离(mm)
 
 // ============ 初始化函数 ============
 void Encoder_Init(void)
@@ -23,35 +26,56 @@ void Encoder_Init(void)
   DL_GPIO_initDigitalInputFeatures(IOMUX_PINCM52,
       DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
       DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+
+  // 读取初始方向状态
+  Encoder_UpdateDir();
+
+  // 清零硬件计数器
+  DL_TimerG_setTimerCount(TIMG8, 0);
+  DL_TimerG_setTimerCount(TIMG12, 0);
 }
 
-// ============ 编码器采样+速度计算（在TIMER_1 ISR中调用，每100us）============
-// 每次调用：读硬件计数器累加
-// 每100次（10ms）：计算速度并更新全局变量
+// ============ 编码器采样（已禁用）============
 void Encoder_Sample(void)
 {
-  // ---- 累加硬件计数 ----
-  int16_t cntA = (int16_t)DL_TimerG_getTimerCount(TIMG8);
+  // 不再使用
+}
+
+// ============ 速度计算（主循环 10ms 周期调用）============
+// 读取硬件计数器并清零，累计距离
+void Encoder_CalcSpeed(void)
+{
+  uint32_t cntA = DL_TimerG_getTimerCount(TIMG8);
   DL_TimerG_setTimerCount(TIMG8, 0);
-  encoder_countA += cntA;
+  debug_cntA = cntA;
+  int32_t rawA = (int32_t)cntA * encoder_dirA;
+  speedA = (int16_t)(rawA * WHEEL_CIRC_MM / 140);
+  total_countA += rawA;
+  distA_mm = total_countA * WHEEL_CIRC_MM / COUNTS_PER_WHEEL_REV;
 
-  int16_t cntB = (int16_t)DL_TimerG_getTimerCount(TIMG12);
+  uint32_t cntB = DL_TimerG_getTimerCount(TIMG12);
   DL_TimerG_setTimerCount(TIMG12, 0);
-  encoder_countB += cntB;
+  debug_cntB = cntB;
+  int32_t rawB = (int32_t)cntB * encoder_dirB;
+  speedB = (int16_t)(rawB * WHEEL_CIRC_MM / 140);
+  total_countB += rawB;
+  distB_mm = total_countB * WHEEL_CIRC_MM / COUNTS_PER_WHEEL_REV;
+}
 
-  // ---- 每10ms计算一次速度 ----
-  if (++sample_cnt >= SPEED_CALC_PERIOD)
-  {
-    sample_cnt = 0;
+// ============ 清零累计距离 ============
+void Encoder_ResetDist(void)
+{
+  total_countA = 0;
+  total_countB = 0;
+  distA_mm = 0;
+  distB_mm = 0;
+}
 
-    static int32_t last_countA = 0, last_countB = 0;
-
-    int32_t diffA = encoder_countA - last_countA;
-    last_countA = encoder_countA;
-    speedA = (float)diffA / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.05f;  // 50ms
-
-    int32_t diffB = encoder_countB - last_countB;
-    last_countB = encoder_countB;
-    speedB = (float)diffB / COUNTS_PER_WHEEL_REV * WHEEL_CIRCUMFERENCE / 0.05f;  // 50ms
-  }
+// ============ 方向更新（在方向引脚GPIO中断中调用）============
+void Encoder_UpdateDir(void)
+{
+  // 高电平=正转(+1)，低电平=反转(-1)
+  encoder_dirA = DL_GPIO_readPins(ENCODER1_DIR_PORT, ENCODER1_DIR_PIN_ENCODER1_PIN) ? 1 : -1;
+  // 右编码器方向引脚接线相反，取反
+  encoder_dirB = DL_GPIO_readPins(ENCODER2_DIR_PORT, ENCODER2_DIR_PIN_ENCODER2_PIN) ? -1 : 1;
 }
