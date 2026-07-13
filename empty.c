@@ -177,6 +177,12 @@ int main(void)
     int breath_dir = 1;
     int breath_cnt = 0;
 
+    /* 定距控制变量 */
+    #define TARGET_DIST_MM  2000   // 目标距离(mm)
+    #define DRIVE_PWM       2000  // 驱动PWM
+    uint8_t dist_mode = 1;        // 1=定距模式, 0=停止
+    uint8_t dist_done = 0;
+
     while (1)
     {
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
@@ -227,10 +233,38 @@ int main(void)
             // // PID 闭环控制（速度环 + 转向环）—— 暂时禁用
             // Motor_PID_Calc();
 
-            /* ---- 固定PWM测试 ---- */
-            Set_PWM(2000, 0);
+            /* ---- 呼吸灯双电机 ---- */
+            // breath_cnt++;
+            // if (breath_cnt >= 10) // 每100ms变一次
+            // {
+            //     breath_cnt = 0;
+            //     breath_pwm += breath_dir * 100;
+            //     if (breath_pwm >= 8000) { breath_pwm = 8000; breath_dir = -1; }
+            //     if (breath_pwm <= 0)    { breath_pwm = 0;    breath_dir = 1;  }
+            // }
+            /* ---- 定距控制 ---- */
+            if (dist_mode && !dist_done)
+            {
+                // 用绝对值判断，避免负距离导致不停
+                int32_t absA = distA_mm > 0 ? distA_mm : -distA_mm;
+                int32_t absB = distB_mm > 0 ? distB_mm : -distB_mm;
+                if (absA < TARGET_DIST_MM && absB < TARGET_DIST_MM)
+                {
+                    Set_PWM(DRIVE_PWM, DRIVE_PWM);
+                }
+                else
+                {
+                    Set_PWM(0, 0);
+                    dist_done = 1;
+                }
+            }
+            else
+            {
+                Set_PWM(0, 0);
+            }
 
-            printf("L:%d\r\n", speedA);
+            printf("distA:%d distB:%d L:%d R:%d done:%d\r\n",
+                   (int)distA_mm, (int)distB_mm, speedA, speedB, dist_done);
         }
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
@@ -264,9 +298,6 @@ void TIMER_1_INST_IRQHandler(void)
     case DL_TIMER_IIDX_ZERO:
         count++;
         nowtime++;
-
-        // 每100us采样一次编码器（同步读取计数+方向，消除竞态条件）
-        Encoder_Sample();
 
         if ((count % 10) == 0) // 10 x 100us = 1ms
         {

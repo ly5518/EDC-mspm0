@@ -9,5 +9,9 @@ void Encoder_UpdateDir(void);
 
 extern volatile int16_t speedA, speedB;
 extern volatile int8_t encoder_dirA, encoder_dirB;
+extern volatile uint32_t debug_cntA, debug_cntB;
+extern volatile int32_t distA_mm, distB_mm;
+
+void Encoder_ResetDist(void);
 
 #endif

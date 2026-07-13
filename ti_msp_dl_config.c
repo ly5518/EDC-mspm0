@@ -392,12 +392,12 @@ SYSCONFIG_WEAK void SYSCFG_DL_PWM_1_init(void) {
 
 
 /*
- * Timer clock configuration to be sourced by LFCLK /  (32768 Hz)
+ * Timer clock configuration to be sourced by MFCLK /  (4000000 Hz)
  * timerClkFreq = (timerClkSrc / (timerClkDivRatio * (timerClkPrescale + 1)))
- *   32768 Hz = 32768 Hz / (1 * (0 + 1))
+ *   4000000 Hz = 4000000 Hz / (1 * (0 + 1))
  */
 static const DL_TimerG_ClockConfig gENCODER1ClockConfig = {
-    .clockSel    = DL_TIMER_CLOCK_LFCLK,
+    .clockSel    = DL_TIMER_CLOCK_MFCLK,
     .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
     .prescale = 0U
 };
@@ -426,13 +426,13 @@ SYSCONFIG_WEAK void SYSCFG_DL_ENCODER1_init(void) {
 }
 
 /*
- * Timer clock configuration to be sourced by LFCLK /  (32768 Hz)
+ * Timer clock configuration to be sourced by MFCLK /  (1000000 Hz)
  * timerClkFreq = (timerClkSrc / (timerClkDivRatio * (timerClkPrescale + 1)))
- *   32768 Hz = 32768 Hz / (1 * (0 + 1))
+ *   1000000 Hz = 1000000 Hz / (4 * (0 + 1))
  */
 static const DL_TimerG_ClockConfig gENCODER2ClockConfig = {
-    .clockSel    = DL_TIMER_CLOCK_LFCLK,
-    .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
+    .clockSel    = DL_TIMER_CLOCK_MFCLK,
+    .divideRatio = DL_TIMER_CLOCK_DIVIDE_4,
     .prescale = 0U
 };
 

@@ -56,6 +56,9 @@ void Motor_PID_Calc(void)
 
 void Set_PWM(int pwmL,int pwmR)
 {
+	// 右电机硬件接线相反，取反修正
+	pwmR = -pwmR;
+
 	 if(pwmL==0)
     {
 		DL_Timer_setCaptureCompareValue(PWM_0_INST,0,GPIO_PWM_0_C0_IDX);
