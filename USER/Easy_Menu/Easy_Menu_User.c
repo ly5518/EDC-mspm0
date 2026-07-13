@@ -8,14 +8,18 @@
 #include "LED.h"
 
 extern float ypr[3];
+extern float yaw_angle;
 extern char gray_digital_str[9];
 extern unsigned short gray_analog[8]; // 原始模拟量数据
 extern uint16_t gray_white_ref[8];    // 白色参考值
 extern uint16_t gray_black_ref[8];    // 黑色参考值
 extern uint16_t gray_threshold[8];    // 灰度阈值
+extern int16_t speedA, speedB;            // 编码器速度
 extern void Gray_White_Cal_Start(void);
 extern void Gray_Black_Cal_Start(void);
 void Gray_Digital_Format(void *data, char *buf, int buf_size);    // 灰度数字值
+
+
 /* USER CODE PUBLIC END */
 
 /* ================================================================= 占位变量 ================================================================= */
@@ -50,6 +54,9 @@ struct {
     unsigned char gray_white_cal;
     unsigned char gray_black_cal;
     unsigned char gray__12__item__data;
+    signed short int SpeedA;
+    signed short int SpeedB;
+    unsigned char Speed_A_kp;
 } Easy_Menu_Ui_Data = {
     .LED1__data = 0,
     .LED2__data = 0,
@@ -81,6 +88,9 @@ struct {
     .gray_white_cal = 0,
     .gray_black_cal = 0,
     .gray__12__item__data = 0,
+    .SpeedA = 0,
+    .SpeedB = 0,
+    .Speed_A_kp = 0,
 };
 /* ============================================================== 页面、条目定义 ============================================================== */    
 Ordinary_Page main_page;
@@ -93,6 +103,8 @@ Ordinary_Page main_page;
     Goto_Item goto__Goto_Page;
     Goto_Item goto__Data_Show;
     Goto_Item goto__Gray;
+    Goto_Item goto__encoder;
+    Goto_Item goto__PID;
     Show_Page start_page;
     Ordinary_Page Text_Page;
         Text_Item text_page__1__item;
@@ -151,6 +163,11 @@ Ordinary_Page main_page;
         Switch_Item gray_white_cal;
         Switch_Item gray_black_cal;
         Show_Item gray__12__item;
+    Ordinary_Page encoder;
+        Show_Item SpeedA;
+        Show_Item SpeedB;
+    Ordinary_Page PID;
+        Data_Item Speed_A_kp;
 /* ================================================================= 枚举列表 ================================================================= */
 char *mode_enum_str[3] = {
     "Static",
@@ -316,7 +333,7 @@ void User_Show_Page__4__Item_Callback(void)
 void Data_Show__Yaw_Callback(void)
 {
     /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.yaw = ypr[0];
+    Easy_Menu_Ui_Data.yaw = yaw_angle;
     /* USER CODE END */
 }
 
@@ -421,6 +438,28 @@ void Gray__12__Item_Callback(void)
     /* USER CODE END */
 }
 
+void Speeda_Callback(void)
+{
+    /* USER CODE BEGIN */
+    Easy_Menu_Ui_Data.SpeedA = speedA;
+    
+    /* USER CODE END */
+}
+
+void Speedb_Callback(void)
+{
+    /* USER CODE BEGIN */
+    Easy_Menu_Ui_Data.SpeedB = speedB;
+    /* USER CODE END */
+}
+
+void Speed_A_Kp_Callback(void *data) // *((unsigned char*)data)
+{
+    /* USER CODE BEGIN */
+
+    /* USER CODE END */
+}
+
 /* ============================================================== 回调函数（页面） ============================================================ */
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE VALUE BEGIN */
@@ -515,7 +554,7 @@ void Start_Page_Period_Callback(void* temp, Easy_Menu_Input_TYPE user_input)
 }
 
 /* =========================================================== 设置列表（普通页面） =========================================================== */
-Item *main_page_items[9] = {
+Item *main_page_items[11] = {
     ITEM(goto__start_page),
     ITEM(goto__Text_Page),
     ITEM(goto__Switch_Page),
@@ -524,7 +563,9 @@ Item *main_page_items[9] = {
     ITEM(goto__User_Show_Page),
     ITEM(goto__Goto_Page),
     ITEM(goto__Data_Show),
-    ITEM(goto__Gray)
+    ITEM(goto__Gray),
+    ITEM(goto__encoder),
+    ITEM(goto__PID)
 };
 
 Item *Text_Page_items[4] = {
@@ -608,11 +649,20 @@ Item *Gray_items[12] = {
     ITEM(gray__12__item)
 };
 
+Item *encoder_items[2] = {
+    ITEM(SpeedA),
+    ITEM(SpeedB)
+};
+
+Item *PID_items[1] = {
+    ITEM(Speed_A_kp)
+};
+
 /* ================================================================ 系统初始化 ================================================================ */
 void Easy_Menu_Ui_Init(void)
 {
 
-    Ordinary_Page_Init(NULL, PAGE(main_page), "Main", main_page_items, 9);
+    Ordinary_Page_Init(NULL, PAGE(main_page), "Main", main_page_items, 11);
         Goto_Item_Init(PAGE(main_page), ITEM(goto__start_page), "Start page", PAGE(start_page));
         Goto_Item_Init(PAGE(main_page), ITEM(goto__Text_Page), "Text Page", PAGE(Text_Page));
         Goto_Item_Init(PAGE(main_page), ITEM(goto__Switch_Page), "Switch_Page", PAGE(Switch_Page));
@@ -622,6 +672,8 @@ void Easy_Menu_Ui_Init(void)
         Goto_Item_Init(PAGE(main_page), ITEM(goto__Goto_Page), "Goto_Page", PAGE(Goto_Page));
         Goto_Item_Init(PAGE(main_page), ITEM(goto__Data_Show), "Data_Show", PAGE(Data_Show));
         Goto_Item_Init(PAGE(main_page), ITEM(goto__Gray), "Gray", PAGE(Gray));
+        Goto_Item_Init(PAGE(main_page), ITEM(goto__encoder), "Encoder", PAGE(encoder));
+        Goto_Item_Init(PAGE(main_page), ITEM(goto__PID), "PID", PAGE(PID));
 
     Show_Page_Init(PAGE(main_page), PAGE(start_page), "Start page", 150, Start_Page_Enter_Callback, Start_Page_Period_Callback, NULL);
 
@@ -693,6 +745,13 @@ void Easy_Menu_Ui_Init(void)
         Switch_Item_Init(PAGE(Gray), ITEM(gray_white_cal), "gray_white_cal", &Easy_Menu_Ui_Data.gray_white_cal, Gray_White_Cal_Callback);
         Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
         Show_Item_Init(PAGE(Gray), ITEM(gray__12__item), "gray__12__item", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray__12__item__data, 100, Gray__12__Item_Callback);
+
+    Ordinary_Page_Init(PAGE(main_page), PAGE(encoder), "Encoder", encoder_items, 2);
+        Show_Item_Init(PAGE(encoder), ITEM(SpeedA), "SpeedA", SIGNED_SHORT_INT, &Easy_Menu_Ui_Data.SpeedA, 10, Speeda_Callback);
+        Show_Item_Init(PAGE(encoder), ITEM(SpeedB), "SpeedB", SIGNED_SHORT_INT, &Easy_Menu_Ui_Data.SpeedB, 10, Speedb_Callback);
+
+    Ordinary_Page_Init(PAGE(main_page), PAGE(PID), "PID", PID_items, 1);
+        Data_Item_Init(PAGE(PID), ITEM(Speed_A_kp), "Speed_A_kp", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.Speed_A_kp, UNSIGNED_CHAR_VAL(1), 1, UNSIGNED_CHAR_VAL(0), 0, UNSIGNED_CHAR_VAL(0), 0, Speed_A_Kp_Callback);
     
     Easy_Menu_Goto_Page(PAGE(main_page));
 }
