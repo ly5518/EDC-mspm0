@@ -9,7 +9,7 @@
 #include "encoder.h"
 #include "motor.h"
 #include "bsp_sg90.h"
-
+#include "pid.h"
 extern float ypr[3];
 extern float yaw_angle;
 extern char gray_digital_str[9];
@@ -17,7 +17,7 @@ extern unsigned short gray_analog[8]; // 原始模拟量数据
 extern uint16_t gray_white_ref[8];    // 白色参考值
 extern uint16_t gray_black_ref[8];    // 黑色参考值
 extern uint16_t gray_threshold[8];    // 灰度阈值
-extern int16_t speedA, speedB;            // 编码器速度
+extern volatile int16_t speedA, speedB;            // 编码器速度
 extern void Gray_White_Cal_Start(void);
 extern void Gray_Black_Cal_Start(void);
 void Gray_Digital_Format(void *data, char *buf, int buf_size);    // 灰度数字值
@@ -60,9 +60,9 @@ struct {
     float speedA;
     float speedB;
     unsigned char square_flag;
-    float Velcity_Kp;
-    float Velcity_Ki;
-    float Velcity_Kd;
+    float speed_Kp;
+    float speed_Ki;
+    float speed_Kd;
     float Angle_Kp;
     float Angle_Ki;
     float Angle_Kd;
@@ -104,9 +104,9 @@ struct {
     .speedA = 0.0f,
     .speedB = 0.0f,
     .square_flag = 0,
-    .Velcity_Kp = 0.0f,
-    .Velcity_Ki = 0.0f,
-    .Velcity_Kd = 0.0f,
+    .speed_Kp = 0.0f,
+    .speed_Ki = 0.0f,
+    .speed_Kd = 0.0f,
     .Angle_Kp = 0.0f,
     .Angle_Ki = 0.0f,
     .Angle_Kd = 0.0f,
@@ -479,28 +479,6 @@ void Gray__12__Item_Callback(void)
     /* USER CODE END */
 }
 
-void Speeda_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.SpeedA = speedA;
-    
-    /* USER CODE END */
-}
-
-void Speedb_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.SpeedB = speedB;
-    /* USER CODE END */
-}
-
-void Speed_A_Kp_Callback(void *data) // *((unsigned char*)data)
-{
-    /* USER CODE BEGIN */
-
-    /* USER CODE END */
-}
-
 void Show_Speeda_Callback(void)
 {
     /* USER CODE BEGIN */
@@ -529,21 +507,21 @@ extern volatile uint8_t square_flag;
 void Speed_Pid__Kp_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
-    Velcity_Kp = *((float*)data);
+    speed_Kp = *((float*)data);
     /* USER CODE END */
 }
 
 void Speed_Pid__Ki_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
-    Velcity_Ki = *((float*)data);
+    speed_Ki = *((float*)data);
     /* USER CODE END */
 }
 
 void Speed_Pid__Kd_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
-    Velcity_Kd = *((float*)data);
+    speed_Kd = *((float*)data);
     /* USER CODE END */
 }
 
@@ -601,12 +579,12 @@ void Sg90_Angle_Callback(void *data) // *((unsigned int*)data)
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE VALUE BEGIN */
 /* 同步外部PID变量到菜单内部变量（启动时调用一次） */
-void Easy_Menu_Sync_PID(void)
-{
-    Easy_Menu_Ui_Data.Velcity_Kp = Velcity_Kp;
-    Easy_Menu_Ui_Data.Velcity_Ki = Velcity_Ki;
-    Easy_Menu_Ui_Data.Velcity_Kd = Velcity_Kd;
-}
+// void Easy_Menu_Sync_PID(void)
+// {
+//     Easy_Menu_Ui_Data.Kp = Kp;
+//     Easy_Menu_Ui_Data.Ki = Ki;
+//     Easy_Menu_Ui_Data.Kd = Kd;
+// }
 
 const char ch[4] = {'|', '/', '-', '\\'};
 unsigned char show_page_len = 0;
@@ -929,9 +907,9 @@ void Easy_Menu_Ui_Init(void)
         Goto_Item_Init(PAGE(PID), ITEM(goto__Turn_PID), "Turn_PID", PAGE(Turn_PID));
 
     Ordinary_Page_Init(PAGE(PID), PAGE(Speed_PID), "Speed_PID", Speed_PID_items, 3);
-        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.Velcity_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Kp_Callback);
-        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__ki), "ki", FLOAT, &Easy_Menu_Ui_Data.Velcity_Ki, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Ki_Callback);
-        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__kd), "kd", FLOAT, &Easy_Menu_Ui_Data.Velcity_Kd, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Kd_Callback);
+        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.speed_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Kp_Callback);
+        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__ki), "ki", FLOAT, &Easy_Menu_Ui_Data.speed_Ki, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Ki_Callback);
+        Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__kd), "kd", FLOAT, &Easy_Menu_Ui_Data.speed_Kd, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Kd_Callback);
 
     Ordinary_Page_Init(PAGE(PID), PAGE(Angle_PID), "Angle_PID", Angle_PID_items, 3);
         Data_Item_Init(PAGE(Angle_PID), ITEM(angle_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.Angle_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Angle_Pid__Kp_Callback);

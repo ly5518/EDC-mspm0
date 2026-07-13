@@ -738,7 +738,7 @@
                   "变量名": "speed_pid__kp",
                   "变量类型": "float_val",
                   "回调函数": true,
-                  "数据变量名": "Velcity_Kp",
+                  "数据变量名": "speed_Kp",
                   "最大值": "NULL",
                   "最小值": "NULL",
                   "步进": "0.5"
@@ -753,7 +753,7 @@
                   "变量名": "speed_pid__ki",
                   "变量类型": "float_val",
                   "回调函数": true,
-                  "数据变量名": "Velcity_Ki",
+                  "数据变量名": "speed_Ki",
                   "最大值": "NULL",
                   "最小值": "NULL",
                   "步进": "0.5"
@@ -768,7 +768,7 @@
                   "变量名": "speed_pid__kd",
                   "变量类型": "float_val",
                   "回调函数": true,
-                  "数据变量名": "Velcity_Kd",
+                  "数据变量名": "speed_Kd",
                   "最大值": "NULL",
                   "最小值": "NULL",
                   "步进": "0.5"

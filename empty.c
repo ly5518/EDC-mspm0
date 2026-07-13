@@ -27,9 +27,6 @@ volatile uint8_t print_flag = 0; // 打印标志（每 100ms）
 volatile uint8_t print_cnt = 0;  // 打印计数器
 int countA = 0, countB = 0;      // 编码器计数(每5ms的编码器计数)
 
-/* ============ 距离计算变量 ============ */
-float distanceA = 0, distanceB = 0;  // 左右轮累计距离(mm)
-float traveled = 0;                   // 净行驶距离(mm)
 float turned = 0;                     // 转过的角度
 volatile uint8_t square_flag = 0;     // 走正方形标志
 
@@ -37,26 +34,19 @@ volatile uint8_t square_flag = 0;     // 走正方形标志
 typedef enum { SQ_IDLE, SQ_STRAIGHT, SQ_TURN, SQ_DONE } SquareState;
 volatile SquareState sq_state = SQ_IDLE;
 int sq_step = 0;           // 当前第几步（0~3）
-float sq_target = 1000.0f; // 直走目标距离(mm)
+float sq_target = 600.0f; // 直走目标距离(mm)
 float sq_turn_target = 90.0f; // 转弯目标角度
 float sq_start_yaw = 0;
+float sq_straight_yaw = 0;   // 直走时的起始yaw角
 
 float ypr[3];
 
-/* ============ 距离更新（每10ms调用） ============ */
-void Update_Distance(void)
+/* ============ 获取净距离（用encoder的distA_mm/distB_mm） ============ */
+float Get_Traveled(void)
 {
-    distanceA += speedA * 0.002f;  // 速度每50ms更新，10ms只算1/5
-    distanceB += speedB * 0.002f;
-    traveled = (distanceA + distanceB) / 2.0f;
-}
-
-/* ============ 重置距离 ============ */
-void Reset_Distance(void)
-{
-    distanceA = 0;
-    distanceB = 0;
-    traveled = 0;
+    float a = distA_mm > 0 ? distA_mm : -distA_mm;
+    float b = distB_mm > 0 ? distB_mm : -distB_mm;
+    return (a + b) / 2.0f;
 }
 
 /* ============ 正方形状态机（每10ms调用一次，非阻塞） ============ */
@@ -68,9 +58,19 @@ void Square_Run(void)
         break;
 
     case SQ_STRAIGHT:
-        if (traveled < sq_target)
+    {
+        float traveled = Get_Traveled();
+        if (fabs(traveled) < sq_target)
         {
-            Set_PWM(-1000, 1000);  // 直走
+            // IMU纠偏：yaw偏差→左右轮差速修正
+            float yaw_error = ypr[0] - sq_straight_yaw;
+            // 处理±180度边界
+            if (yaw_error > 180.0f) yaw_error -= 360.0f;
+            if (yaw_error < -180.0f) yaw_error += 360.0f;
+            int correction = (int)(yaw_error * 100);  // 比例系数
+            if (correction > 600) correction = 600;
+            if (correction < -600) correction = -600;
+            Set_PWM(-2000 + correction,2000 + correction);
         }
         else
         {
@@ -82,6 +82,7 @@ void Square_Run(void)
             sq_state = SQ_TURN;    // 切换到转弯
         }
         break;
+    }
 
     case SQ_TURN:
         if (turned < sq_turn_target)
@@ -99,7 +100,8 @@ void Square_Run(void)
             }
             else
             {
-                Reset_Distance();
+                Encoder_ResetDist();
+                sq_straight_yaw = ypr[0];  // 记录转弯后的yaw角
                 sq_state = SQ_STRAIGHT;
             }
         }
@@ -308,7 +310,8 @@ int main(void)
     /* 定距控制变量 */
     #define TARGET_DIST_MM  2000   // 目标距离(mm)
     #define DRIVE_PWM       2000  // 驱动PWM
-    uint8_t dist_mode = 1;        // 1=定距模式, 0=停止
+    uint8_t dist_mode = 0;        // 1=定距模式, 0=停止（已由状态机控制）
+uint8_t reset_flag = 0;       // 串口发'r'重置距离
     uint8_t dist_done = 0;
 
     while (1)
@@ -356,7 +359,25 @@ int main(void)
         if (_10ms_flag)
         {
             _10ms_flag = 0;
+            Square_Run();  // 正方形状态机（非阻塞）
+        }
 
+        // 调试打印（每100ms）
+        {
+            static int dbg_cnt = 0;
+            if (++dbg_cnt >= 10) { dbg_cnt = 0; printf("state:%d yaw:%.1f turned:%.1f target:%.1f dist:%.1f\n", sq_state, ypr[0], turned, sq_turn_target, Get_Traveled()); }
+        }
+
+        // 菜单触发：启动正方形状态机
+        if (square_flag && sq_state == SQ_IDLE)
+        {
+            Velocity_Reset();
+            Encoder_ResetDist();
+            sq_straight_yaw = ypr[0];  // 记录起始yaw角
+            sq_step = 0;
+            sq_state = SQ_STRAIGHT;
+        }
+            
             // 编码器速度计算
             Encoder_CalcSpeed();
 
@@ -373,29 +394,28 @@ int main(void)
             //     if (breath_pwm <= 0)    { breath_pwm = 0;    breath_dir = 1;  }
             // }
             /* ---- 定距控制 ---- */
-            if (dist_mode && !dist_done)
-            {
-                // 用绝对值判断，避免负距离导致不停
-                int32_t absA = distA_mm > 0 ? distA_mm : -distA_mm;
-                int32_t absB = distB_mm > 0 ? distB_mm : -distB_mm;
-                if (absA < TARGET_DIST_MM && absB < TARGET_DIST_MM)
-                {
-                    Set_PWM(DRIVE_PWM, DRIVE_PWM);
-                }
-                else
-                {
-                    Set_PWM(0, 0);
-                    dist_done = 1;
-                }
-            }
-            else
-            {
-                Set_PWM(0, 0);
-            }
+            // 定距控制已由状态机处理
+            // if (dist_mode && !dist_done)
+            // {
+            //     int32_t absA = distA_mm > 0 ? distA_mm : -distA_mm;
+            //     int32_t absB = distB_mm > 0 ? distB_mm : -distB_mm;
+            //     if (absA < TARGET_DIST_MM && absB < TARGET_DIST_MM)
+            //     {
+            //         Set_PWM(-DRIVE_PWM, DRIVE_PWM);
+            //     }
+            //     else
+            //     {
+            //         Set_PWM(0, 0);
+            //         dist_done = 1;
+            //     }
+            // }
+            // else
+            // {
+            //     Set_PWM(0, 0);
+            // }
 
-            printf("distA:%d distB:%d L:%d R:%d done:%d\r\n",
-                   (int)distA_mm, (int)distB_mm, speedA, speedB, dist_done);
-        }
+            printf("cntA:%u distA:%d L:%d done:%d\r\n",
+                   debug_cntA, (int)distA_mm, speedA, dist_done);
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
         {

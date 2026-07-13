@@ -21,6 +21,13 @@ void Motor_Init(void)
 	DL_Timer_startCounter(PWM_1_INST);
 }
 
+void Velocity_Reset(void)
+{
+    PID_Reset(&pid_speedA);
+    PID_Reset(&pid_speedB);
+    PID_Reset(&pid_steer);
+}
+
 void Motor_PID_Init(void)
 {
 	// 速度环：增量式PID，参数待整定
@@ -57,7 +64,7 @@ void Motor_PID_Calc(void)
 void Set_PWM(int pwmL,int pwmR)
 {
 	// 右电机硬件接线相反，取反修正
-	pwmR = -pwmR;
+	// pwmR = -pwmR;
 
 	 if(pwmL==0)
     {

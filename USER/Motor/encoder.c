@@ -3,9 +3,10 @@
 // ============ 编码器参数 ============
 #define ENCODER_PPR 500   // 编码器线数
 #define GEAR_RATIO 28     // 减速比
-#define WHEEL_DIA_MM 65   // 轮子直径(mm)
-#define WHEEL_CIRC_MM 195 //(3.14 * WHEEL_DIA_MM)=204
-#define COUNTS_PER_WHEEL_REV 23333 // 校准值：实际5m走了3m，原14000 * 5/3
+#define ENCODER_MULT 2    // 双边沿计数，2倍频
+#define WHEEL_DIA_MM 65   // 轮子直径(mm) 实测
+#define WHEEL_CIRC_MM 204 // 实测轮子周长(mm)
+#define COUNTS_PER_WHEEL_REV (ENCODER_PPR * ENCODER_MULT * GEAR_RATIO) // 500*2*28=28000
 // 速度公式: speed(mm/s) = diff * WHEEL_CIRC_MM / 140
 
 // ============ 全局变量 ============

@@ -5,9 +5,9 @@
 
 typedef struct {
     /* 参数 */
-    float Kp;
-    float Ki;
-    float Kd;
+    float speed_Kp;
+    float speed_Ki;
+    float speed_Kd;
     int16_t deadzone;       // 死区（误差小于此值不调节）
     int16_t max_out;        // 输出上限
     int16_t min_out;        // 输出下限（通常 = -max_out）
@@ -30,5 +30,15 @@ void PID_SetKi(PID_TypeDef *pid, float ki);
 void PID_SetKd(PID_TypeDef *pid, float kd);
 int16_t PID_Incremental_Calc(PID_TypeDef *pid);
 int16_t PID_Positional_Calc(PID_TypeDef *pid);
+
+/* 速度PID参数（菜单可调） */
+extern float speed_Kp;
+extern float speed_Ki;
+extern float speed_Kd;
+
+/* 角度PID参数（菜单可调） */
+extern float angle_Kp;
+extern float angle_Ki;
+extern float angle_Kd;
 
 #endif
