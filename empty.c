@@ -6,6 +6,7 @@
 #include "LCD.h"
 #include "encoder.h"
 #include "motor.h"
+#include "task.h"
 #include "Gray.h"
 #include "Easy_Menu.h"
 #include "Key.h"
@@ -19,101 +20,16 @@ static void LCD_Display_Chinese_Char_Line(unsigned short int x, unsigned char li
 
 extern uint32_t nowtime;
 volatile uint32_t count = 0;
+volatile uint8_t square_flag = 0;  // 菜单触发正方形任务
 static uint32_t menu_count = 0;
-volatile uint8_t _1ms_flag = 0;  // 1ms 定时标志
-volatile uint8_t _5ms_flag = 0;  // 5ms 定时标志
-volatile uint8_t _10ms_flag = 0; // 10ms 定时标志
-volatile uint8_t print_flag = 0; // 打印标志（每 100ms）
-volatile uint8_t print_cnt = 0;  // 打印计数器
-int countA = 0, countB = 0;      // 编码器计数(每5ms的编码器计数)
-
-float turned = 0;                     // 转过的角度
-volatile uint8_t square_flag = 0;     // 走正方形标志
-
-/* ============ 正方形状态机 ============ */
-typedef enum { SQ_IDLE, SQ_STRAIGHT, SQ_TURN, SQ_DONE } SquareState;
-volatile SquareState sq_state = SQ_IDLE;
-int sq_step = 0;           // 当前第几步（0~3）
-float sq_target = 600.0f; // 直走目标距离(mm)
-float sq_turn_target = 90.0f; // 转弯目标角度
-float sq_start_yaw = 0;
-float sq_straight_yaw = 0;   // 直走时的起始yaw角
+volatile uint8_t _1ms_flag = 0;
+volatile uint8_t _5ms_flag = 0;
+volatile uint8_t _10ms_flag = 0;
+volatile uint8_t print_flag = 0;
+volatile uint8_t print_cnt = 0;
 
 float ypr[3];
-
-/* ============ 获取净距离（用encoder的distA_mm/distB_mm） ============ */
-float Get_Traveled(void)
-{
-    float a = distA_mm > 0 ? distA_mm : -distA_mm;
-    float b = distB_mm > 0 ? distB_mm : -distB_mm;
-    return (a + b) / 2.0f;
-}
-
-/* ============ 正方形状态机（每10ms调用一次，非阻塞） ============ */
-void Square_Run(void)
-{
-    switch (sq_state)
-    {
-    case SQ_IDLE:
-        break;
-
-    case SQ_STRAIGHT:
-    {
-        float traveled = Get_Traveled();
-        if (fabs(traveled) < sq_target)
-        {
-            // IMU纠偏：yaw偏差→左右轮差速修正
-            float yaw_error = ypr[0] - sq_straight_yaw;
-            // 处理±180度边界
-            if (yaw_error > 180.0f) yaw_error -= 360.0f;
-            if (yaw_error < -180.0f) yaw_error += 360.0f;
-            int correction = (int)(yaw_error * 100);  // 比例系数
-            if (correction > 600) correction = 600;
-            if (correction < -600) correction = -600;
-            Set_PWM(-2000 + correction,2000 + correction);
-        }
-        else
-        {
-            Set_PWM(0, 0);          // 立刻停车
-            delay_ms(100);          // 等车停稳
-            IMU_getYawPitchRoll(ypr);
-            sq_start_yaw = ypr[0];
-            turned = 0;
-            sq_state = SQ_TURN;    // 切换到转弯
-        }
-        break;
-    }
-
-    case SQ_TURN:
-        if (turned < sq_turn_target)
-        {
-            Set_PWM(-1000, -1000);  // 右转
-        }
-        else
-        {
-            Set_PWM(0, 0);
-            sq_step++;
-            if (sq_step >= 4)
-            {
-                sq_step = 0;
-                sq_state = SQ_DONE;
-            }
-            else
-            {
-                Encoder_ResetDist();
-                sq_straight_yaw = ypr[0];  // 记录转弯后的yaw角
-                sq_state = SQ_STRAIGHT;
-            }
-        }
-        break;
-
-    case SQ_DONE:
-        Set_PWM(0, 0);
-        sq_state = SQ_IDLE;
-        square_flag = 0;
-        break;
-    }
-}
+extern float yaw_angle;
 
 
 /* ============ Yaw 角度（带清零补偿）============ */
@@ -293,7 +209,6 @@ int main(void)
 
     Motor_Init();
     Encoder_Init();
-    Motor_PID_Init();
 
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -302,17 +217,17 @@ int main(void)
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
 
-    /* 呼吸灯变量 */
-    int breath_pwm = 0;
-    int breath_dir = 1;
-    int breath_cnt = 0;
+//     /* 呼吸灯变量 */
+//     int breath_pwm = 0;
+//     int breath_dir = 1;
+//     int breath_cnt = 0;
 
-    /* 定距控制变量 */
-    #define TARGET_DIST_MM  2000   // 目标距离(mm)
-    #define DRIVE_PWM       2000  // 驱动PWM
-    uint8_t dist_mode = 0;        // 1=定距模式, 0=停止（已由状态机控制）
-uint8_t reset_flag = 0;       // 串口发'r'重置距离
-    uint8_t dist_done = 0;
+//     /* 定距控制变量 */
+//     #define TARGET_DIST_MM  2000   // 目标距离(mm)
+//     #define DRIVE_PWM       2000  // 驱动PWM
+//     uint8_t dist_mode = 0;        // 1=定距模式, 0=停止（已由状态机控制）
+// uint8_t reset_flag = 0;       // 串口发'r'重置距离
+//     uint8_t dist_done = 0;
 
     while (1)
     {
@@ -324,8 +239,6 @@ uint8_t reset_flag = 0;       // 串口发'r'重置距离
             _5ms_flag = 0;
 
             IMU_getYawPitchRoll(ypr);
-            if (sq_state == SQ_TURN)
-                turned = fabs(ypr[0] - sq_start_yaw);
 
             // 更新补偿后的 yaw_angle，保持在 [-180, 180]
             yaw_angle = ypr[0] - yaw_offset;
@@ -359,63 +272,27 @@ uint8_t reset_flag = 0;       // 串口发'r'重置距离
         if (_10ms_flag)
         {
             _10ms_flag = 0;
-            Square_Run();  // 正方形状态机（非阻塞）
+
+            Encoder_CalcSpeed();   // 编码器速度计算（必须定时采样）
+            Task_Run();            // 任务调度（非阻塞）
+
+            // 调试：每100ms打印状态
+            {
+                static uint8_t dbg = 0;
+                if (++dbg >= 10) { dbg = 0;
+                    printf("task:%d pt:%d dist:%.0f spd:%d yaw:%.1f\r\n",
+                        task_mode, current_point, CurrentDistance, speedA, yaw_angle);
+                }
+            }
         }
 
-        // 调试打印（每100ms）
+        // 菜单触发：启动正方形任务
+        if (square_flag && task_mode == TASK_IDLE)
         {
-            static int dbg_cnt = 0;
-            if (++dbg_cnt >= 10) { dbg_cnt = 0; printf("state:%d yaw:%.1f turned:%.1f target:%.1f dist:%.1f\n", sq_state, ypr[0], turned, sq_turn_target, Get_Traveled()); }
+            Task_Square_Start();
+            square_flag = 0;
         }
 
-        // 菜单触发：启动正方形状态机
-        if (square_flag && sq_state == SQ_IDLE)
-        {
-            Velocity_Reset();
-            Encoder_ResetDist();
-            sq_straight_yaw = ypr[0];  // 记录起始yaw角
-            sq_step = 0;
-            sq_state = SQ_STRAIGHT;
-        }
-            
-            // 编码器速度计算
-            Encoder_CalcSpeed();
-
-            // // PID 闭环控制（速度环 + 转向环）—— 暂时禁用
-            // Motor_PID_Calc();
-
-            /* ---- 呼吸灯双电机 ---- */
-            // breath_cnt++;
-            // if (breath_cnt >= 10) // 每100ms变一次
-            // {
-            //     breath_cnt = 0;
-            //     breath_pwm += breath_dir * 100;
-            //     if (breath_pwm >= 8000) { breath_pwm = 8000; breath_dir = -1; }
-            //     if (breath_pwm <= 0)    { breath_pwm = 0;    breath_dir = 1;  }
-            // }
-            /* ---- 定距控制 ---- */
-            // 定距控制已由状态机处理
-            // if (dist_mode && !dist_done)
-            // {
-            //     int32_t absA = distA_mm > 0 ? distA_mm : -distA_mm;
-            //     int32_t absB = distB_mm > 0 ? distB_mm : -distB_mm;
-            //     if (absA < TARGET_DIST_MM && absB < TARGET_DIST_MM)
-            //     {
-            //         Set_PWM(-DRIVE_PWM, DRIVE_PWM);
-            //     }
-            //     else
-            //     {
-            //         Set_PWM(0, 0);
-            //         dist_done = 1;
-            //     }
-            // }
-            // else
-            // {
-            //     Set_PWM(0, 0);
-            // }
-
-            printf("cntA:%u distA:%d L:%d done:%d\r\n",
-                   debug_cntA, (int)distA_mm, speedA, dist_done);
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
         {
@@ -434,6 +311,9 @@ uint8_t reset_flag = 0;       // 串口发'r'重置距离
                 gray_digital_str[7 - i] = (gray_analog[i] > th) ? '1' : '0';
             }
             gray_digital_str[8] = '\0';
+
+            // 计算循迹线位置
+            Line_CalcPosition();
 
             Easy_Menu_Display_Refresh(); // 刷新当前页面（更新 Text_Item 显示）
         }
@@ -477,36 +357,27 @@ void TIMER_1_INST_IRQHandler(void)
     }
 }
 
-// GPIO中断处理（编码器方向 + 按键 + NRF24L01）
+// GPIO中断处理（按键 + NRF24L01）
 void GROUP1_IRQHandler(void)
 {
-    // ---- GPIOA: 编码器A方向 + NRF24L01 IRQ ----
+    // ---- GPIOA: NRF24L01 IRQ ----
     uint32_t statusA = DL_GPIO_getEnabledInterruptStatus(GPIOA,
         ENCODER1_DIR_PIN_ENCODER1_PIN | NRF24L01_IRQ_PIN);
 
+    // 编码器方向引脚中断：只清状态，不处理（方向由PWM决定）
     if (statusA & ENCODER1_DIR_PIN_ENCODER1_PIN)
-    {
-        Encoder_UpdateDir();
         DL_GPIO_clearInterruptStatus(GPIOA, ENCODER1_DIR_PIN_ENCODER1_PIN);
-    }
     if (statusA & NRF24L01_IRQ_PIN)
-    {
         DL_GPIO_clearInterruptStatus(GPIOA, NRF24L01_IRQ_PIN);
-    }
 
-    // ---- GPIOB: 编码器B方向 + 按键 ----
+    // ---- GPIOB: 按键 ----
     uint32_t statusB = DL_GPIO_getEnabledInterruptStatus(GPIOB,
         ENCODER2_DIR_PIN_ENCODER2_PIN | KEY_up_PIN);
 
     if (statusB & ENCODER2_DIR_PIN_ENCODER2_PIN)
-    {
-        Encoder_UpdateDir();
         DL_GPIO_clearInterruptStatus(GPIOB, ENCODER2_DIR_PIN_ENCODER2_PIN);
-    }
     if (statusB & KEY_up_PIN)
-    {
         DL_GPIO_clearInterruptStatus(GPIOB, KEY_up_PIN);
-    }
 }
 
 void TimeA1_Init(void)
