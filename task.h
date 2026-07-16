@@ -13,7 +13,7 @@
 typedef enum {
     TASK_IDLE = 0,
     TASK_SQUARE,
-    // TASK_LINE,    // 以后加循迹任务
+    TASK_LINE_SQUARE,
 } TaskMode_t;
 
 /* ============ 任务节点 ============ */
@@ -53,8 +53,13 @@ void Motor_PID_Sync(void);
 void Line_CalcPosition(void);
 void Task_Run(void);
 
+/* ============ 正方形参数 ============ */
+extern uint8_t ls_lap_target;  // 循迹圈数目标
+
 /* ============ 任务函数 ============ */
 void Task_Square_Start(void);
 void Task_Square(void);
+void Task_LineSquare_Start(void);
+void Task_LineSquare(void);
 
 #endif

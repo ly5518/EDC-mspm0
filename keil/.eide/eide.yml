@@ -18,6 +18,7 @@ virtualFolder:
         - path: ../ti_msp_dl_config.c
         - path: ../board.c
         - path: ../basic_read_reg.c
+        - path: ../task.c
       folders: []
     - name: Driverlib
       files:

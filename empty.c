@@ -20,7 +20,8 @@ static void LCD_Display_Chinese_Char_Line(unsigned short int x, unsigned char li
 
 extern uint32_t nowtime;
 volatile uint32_t count = 0;
-volatile uint8_t square_flag = 0;  // 菜单触发正方形任务
+volatile uint8_t square_flag = 0;      // 菜单触发正方形任务
+volatile uint8_t line_square_flag = 0; // 菜单触发循迹正方形任务
 static uint32_t menu_count = 0;
 volatile uint8_t _1ms_flag = 0;
 volatile uint8_t _5ms_flag = 0;
@@ -291,6 +292,13 @@ int main(void)
         {
             Task_Square_Start();
             square_flag = 0;
+        }
+
+        // 菜单触发：启动循迹正方形任务
+        if (line_square_flag && task_mode == TASK_IDLE)
+        {
+            Task_LineSquare_Start();
+            line_square_flag = 0;
         }
 
         // 每 100ms 采集灰度并打印模拟量

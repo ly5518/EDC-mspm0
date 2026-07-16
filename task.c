@@ -56,6 +56,12 @@ static float sq_straight_yaw = 0;
 static uint8_t straight_init = 0;
 uint8_t sq_cycle_count = 0;
 
+/* ============ 循迹正方形参数 ============ */
+uint8_t ls_lap_target = 1;       // 目标圈数
+static uint8_t ls_lap_count = 0; // 已走圈数
+static uint8_t ls_corner_count = 0; // 角计数（4角=1圈）
+static uint8_t ls_corner_debounce = 0; // 角检测消抖
+
 /* ================================================================ */
 void Task_Init(void)
 {
@@ -134,6 +140,9 @@ void Task_Run(void)
         break;
     case TASK_SQUARE:
         Task_Square();
+        break;
+    case TASK_LINE_SQUARE:
+        Task_LineSquare();
         break;
     }
 }
@@ -219,5 +228,71 @@ void Task_Square(void)
 
     default:
         break;
+    }
+}
+
+/* ================================================================ */
+/*                     任务2：循迹正方形                              */
+/* ================================================================ */
+
+void Task_LineSquare_Start(void)
+{
+    task_mode = TASK_LINE_SQUARE;
+    Task_Init();
+    ls_lap_count = 0;
+    ls_corner_count = 0;
+    ls_corner_debounce = 0;
+    pid_speed.Enabled = 1;
+    pid_steer.Enabled = 0;   // 不用转向环
+    pid_line.Enabled = 1;    // 用循迹环
+    target_line = 0;         // 循迹目标：线在中间
+    target_speed = sq_target_speed;
+}
+
+void Task_LineSquare(void)
+{
+    // 更新循迹位置
+    Line_CalcPosition();
+
+    // 速度控制
+    target_speed = sq_target_speed;
+
+    // 循迹PID控制
+    pid_speed.Enabled = 1;
+    pid_steer.Enabled = 0;
+    pid_line.Enabled = 1;
+    PID_Calc();
+
+    // 角检测：8路全黑 = 到达顶点
+    extern char gray_digital_str[9];
+    uint8_t all_black = 1;
+    for (int i = 0; i < 8; i++)
+    {
+        if (gray_digital_str[i] != '1') { all_black = 0; break; }
+    }
+
+    if (all_black)
+    {
+        if (ls_corner_debounce == 0)
+        {
+            ls_corner_count++;
+            ls_corner_debounce = 1;
+
+            if (ls_corner_count >= 4)
+            {
+                ls_corner_count = 0;
+                ls_lap_count++;
+
+                if (ls_lap_count >= ls_lap_target)
+                {
+                    task_mode = TASK_IDLE;
+                    return;
+                }
+            }
+        }
+    }
+    else
+    {
+        ls_corner_debounce = 0;
     }
 }

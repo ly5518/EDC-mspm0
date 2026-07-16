@@ -505,6 +505,11 @@
               <FilePath>..\USER\Motor\motor.c</FilePath>
             </File>
             <File>
+              <FileName>task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\task.c</FilePath>
+            </File>
+            <File>
               <FileName>ADC.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\Gray\ADC.c</FilePath>
