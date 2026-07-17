@@ -17,13 +17,13 @@ PID_t pid_speed = {
     .Mode = PID_INCREMENTAL, .Enabled = 1
 };
 PID_t pid_steer = {
-    .Kp = 150.0f, .Ki = 0.0f, .Kd = 0.5f,
-    .OutMax = 800, .OutMin = -800,
+    .Kp = 50.0f, .Ki = 0.0f, .Kd = 0.5f,//150.0f
+    .OutMax = 500, .OutMin = -500,   //800
     .IntegralMax = 800, .IntegralMin = -800,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 1
 };
 PID_t pid_line = {
-    .Kp = 35.0f, .Ki = 0.0f, .Kd = 0.1f,
+    .Kp = 45.0f, .Ki = 0.0f, .Kd = 0.1f,
     .OutMax = 3000, .OutMin = -3000,
     .IntegralMax = 3000, .IntegralMin = -3000,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 0
@@ -46,7 +46,7 @@ float CurrentDistance = 0.0f;
 /* ============ 正方形参数 ============ */
 float sq_target = 600.0f;
 float sq_turn_target = 90.0f;
-int16_t sq_target_speed = 200;   //600;
+int16_t sq_target_speed = 350;   //600;
 
 /* ============ 转弯辅助 ============ */
 static float turned = 0;
@@ -283,7 +283,7 @@ void Task_LineSquare(void)
         for (int i = 0; i < 8; i++)
             if (gray_digital_str[i] == '0') { line_found = 1; break; }
 
-        if (fabs(turned) >= 45.0f && line_found)
+        if (fabs(turned) >= 55.0f && line_found)
         {
             lf_state = LF_FOLLOW;
             lf_lap_count++;
