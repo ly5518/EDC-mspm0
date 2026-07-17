@@ -275,6 +275,7 @@ int main(void)
             _10ms_flag = 0;
 
             Encoder_CalcSpeed();   // 编码器速度计算（必须定时采样）
+            Line_CalcPosition();   // 循迹线位置（每10ms更新）
             Task_Run();            // 任务调度（非阻塞）
 
             // 调试：每100ms打印状态

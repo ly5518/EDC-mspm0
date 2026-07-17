@@ -23,9 +23,9 @@ PID_t pid_steer = {
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 1
 };
 PID_t pid_line = {
-    .Kp = 5.0f, .Ki = 0.0f, .Kd = 0.1f,
-    .OutMax = 500, .OutMin = -500,
-    .IntegralMax = 300, .IntegralMin = -300,
+    .Kp = 35.0f, .Ki = 0.0f, .Kd = 0.1f,
+    .OutMax = 3000, .OutMin = -3000,
+    .IntegralMax = 3000, .IntegralMin = -3000,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 0
 };
 
@@ -235,18 +235,70 @@ void Task_Square(void)
 /*                     任务2：循迹正方形                              */
 /* ================================================================ */
 
-// ---- 循迹核心：速度环 + 循迹环 ----
+/* 循迹状态 */
+typedef enum { LF_FOLLOW, LF_TURNING } LFState_t;
+static LFState_t lf_state = LF_FOLLOW;
+static float lf_turn_start = 0;
+static uint8_t lf_lap_count = 0;
+
 void Task_LineSquare(void)
 {
-    Line_CalcPosition();
-    pid_speed.Enabled = 1;
-    pid_line.Enabled = 1;
-    pid_steer.Enabled = 0;
-    target_speed = sq_target_speed;
-    target_line = 0;
-    PID_Calc();
-}
+    extern char gray_digital_str[9];
 
+    if (lf_state == LF_FOLLOW)
+    {
+        pid_speed.Enabled = 1;
+        pid_line.Enabled = 1;
+        pid_steer.Enabled = 0;
+        target_speed = sq_target_speed;
+        target_line = 0;
+        PID_Calc();
+
+        if (gray_digital_str[0] == '0' && gray_digital_str[1] == '0' &&
+            gray_digital_str[2] == '0' && gray_digital_str[3] == '0')
+        {
+            lf_state = LF_TURNING;
+            lf_turn_start = yaw_angle;
+            PID_Clear(&pid_steer);
+            PID_Clear(&pid_line);
+        }
+    }
+    else
+    {
+        // 转弯：保持速度，转向环转90°
+        pid_speed.Enabled = 1;
+        pid_line.Enabled = 0;
+        pid_steer.Enabled = 1;
+        target_speed = sq_target_speed;
+        target_yaw = lf_turn_start - 90.0f;
+        if (target_yaw < -180.0f) target_yaw += 360.0f;
+        PID_Calc();
+
+        // 转够80° 且 线重新出现 → 回到循迹
+        float turned = yaw_angle - lf_turn_start;
+        if (turned > 180.0f)  turned -= 360.0f;
+        if (turned < -180.0f) turned += 360.0f;
+
+        uint8_t line_found = 0;
+        for (int i = 0; i < 8; i++)
+            if (gray_digital_str[i] == '0') { line_found = 1; break; }
+
+        if (fabs(turned) >= 45.0f && line_found)
+        {
+            lf_state = LF_FOLLOW;
+            lf_lap_count++;
+            PID_Clear(&pid_steer);
+            PID_Clear(&pid_line);
+
+            if (lf_lap_count >= 4)
+            {
+                lf_lap_count = 0;
+                task_mode = TASK_IDLE;
+                Set_PWM(0, 0);
+            }
+        }
+    }
+}
 
 // ---- 任务：直线循迹（测试用，跑10秒停）----
 void Task_Line_Start(void)
