@@ -59,7 +59,7 @@ extern uint8_t ls_lap_target;  // 循迹圈数目标
 /* ============ 任务函数 ============ */
 void Task_Square_Start(void);
 void Task_Square(void);
-void Task_LineSquare_Start(void);
+void Task_Line_Start(void);
 void Task_LineSquare(void);
 
 #endif

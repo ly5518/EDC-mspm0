@@ -60,16 +60,16 @@ struct {
     float speedA;
     float speedB;
     unsigned char square_flag;
-    unsigned char line_square_flag;
+    unsigned char sqline__flag;
     float speed_Kp;
     float speed_Ki;
     float speed_Kd;
     float Angle_Kp;
     float Angle_Ki;
     float Angle_Kd;
-    float Turn_Kp;
-    float Turn_Ki;
-    float Turn_Kd;
+    float Line_Kp;
+    float Line_Ki;
+    float Line_Kd;
     unsigned int angle;
 } Easy_Menu_Ui_Data = {
     .LED1__data = 0,
@@ -105,16 +105,16 @@ struct {
     .speedA = 0.0f,
     .speedB = 0.0f,
     .square_flag = 0,
-    .line_square_flag = 0,
+    .sqline__flag = 0,
     .speed_Kp = 0.0f,
     .speed_Ki = 0.0f,
     .speed_Kd = 0.0f,
     .Angle_Kp = 0.0f,
     .Angle_Ki = 0.0f,
     .Angle_Kd = 0.0f,
-    .Turn_Kp = 0.0f,
-    .Turn_Ki = 0.0f,
-    .Turn_Kd = 0.0f,
+    .Line_Kp = 0.0f,
+    .Line_Ki = 0.0f,
+    .Line_Kd = 0.0f,
     .angle = 0,
 };
 /* ============================================================== 页面、条目定义 ============================================================== */    
@@ -193,11 +193,11 @@ Ordinary_Page main_page;
         Show_Item show_speedA;
         Show_Item show_speedB;
         Switch_Item encoder_square_flag;
-        Switch_Item encoder_line_square_flag;
+        Switch_Item encoder__line__flag;
     Ordinary_Page PID;
         Goto_Item goto__Speed_PID;
         Goto_Item goto__Angle_PID;
-        Goto_Item goto__Turn_PID;
+        Goto_Item goto__Line_PID;
         Ordinary_Page Speed_PID;
             Data_Item speed_pid__kp;
             Data_Item speed_pid__ki;
@@ -206,10 +206,10 @@ Ordinary_Page main_page;
             Data_Item angle_pid__kp;
             Data_Item angle_pid__ki;
             Data_Item angle_pid__kd;
-        Ordinary_Page Turn_PID;
-            Data_Item turn_pid__kp;
-            Data_Item turn_pid__ki;
-            Data_Item turn_pid__kd;
+        Ordinary_Page Line_PID;
+            Data_Item line_pid__kp;
+            Data_Item line_pid__ki;
+            Data_Item line_pid__kd;
     Ordinary_Page SG90;
         Data_Item sg90_angle;
 /* ================================================================= 枚举列表 ================================================================= */
@@ -507,7 +507,7 @@ void Encoder_Square_Flag_Callback(unsigned char data)
     /* USER CODE END */
 }
 
-void Line_Square_Flag_Callback(unsigned char data)
+void Encoder__Line__Flag_Callback(unsigned char data)
 {
     /* USER CODE BEGIN */
     extern volatile uint8_t line_square_flag;
@@ -558,21 +558,21 @@ void Angle_Pid__Kd_Callback(void *data) // *((float*)data)
     /* USER CODE END */
 }
 
-void Turn_Pid__Kp_Callback(void *data) // *((float*)data)
+void Line_Pid__Kp_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
 
     /* USER CODE END */
 }
 
-void Turn_Pid__Ki_Callback(void *data) // *((float*)data)
+void Line_Pid__Ki_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
 
     /* USER CODE END */
 }
 
-void Turn_Pid__Kd_Callback(void *data) // *((float*)data)
+void Line_Pid__Kd_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
 
@@ -785,16 +785,17 @@ Item *Gray_items[12] = {
     ITEM(gray__12__item)
 };
 
-Item *encoder_items[3] = {
+Item *encoder_items[4] = {
     ITEM(show_speedA),
     ITEM(show_speedB),
-    ITEM(encoder_square_flag)
+    ITEM(encoder_square_flag),
+    ITEM(encoder__line__flag)
 };
 
 Item *PID_items[3] = {
     ITEM(goto__Speed_PID),
     ITEM(goto__Angle_PID),
-    ITEM(goto__Turn_PID)
+    ITEM(goto__Line_PID)
 };
 
 Item *Speed_PID_items[3] = {
@@ -809,10 +810,10 @@ Item *Angle_PID_items[3] = {
     ITEM(angle_pid__kd)
 };
 
-Item *Turn_PID_items[3] = {
-    ITEM(turn_pid__kp),
-    ITEM(turn_pid__ki),
-    ITEM(turn_pid__kd)
+Item *Line_PID_items[3] = {
+    ITEM(line_pid__kp),
+    ITEM(line_pid__ki),
+    ITEM(line_pid__kd)
 };
 
 Item *SG90_items[1] = {
@@ -912,12 +913,12 @@ void Easy_Menu_Ui_Init(void)
         Show_Item_Init(PAGE(encoder), ITEM(show_speedA), "speedA", FLOAT, &Easy_Menu_Ui_Data.speedA, 10, Show_Speeda_Callback);
         Show_Item_Init(PAGE(encoder), ITEM(show_speedB), "speedB", FLOAT, &Easy_Menu_Ui_Data.speedB, 10, Show_Speedb_Callback);
         Switch_Item_Init(PAGE(encoder), ITEM(encoder_square_flag), "square_flag", &Easy_Menu_Ui_Data.square_flag, Encoder_Square_Flag_Callback);
-        Switch_Item_Init(PAGE(encoder), ITEM(encoder_line_square_flag), "line_sq_flag", &Easy_Menu_Ui_Data.line_square_flag, Line_Square_Flag_Callback);
+        Switch_Item_Init(PAGE(encoder), ITEM(encoder__line__flag), "sqline__flag", &Easy_Menu_Ui_Data.sqline__flag, Encoder__Line__Flag_Callback);
 
     Ordinary_Page_Init(PAGE(main_page), PAGE(PID), "PID", PID_items, 3);
         Goto_Item_Init(PAGE(PID), ITEM(goto__Speed_PID), "Speed_PID", PAGE(Speed_PID));
         Goto_Item_Init(PAGE(PID), ITEM(goto__Angle_PID), "Angle_PID", PAGE(Angle_PID));
-        Goto_Item_Init(PAGE(PID), ITEM(goto__Turn_PID), "Turn_PID", PAGE(Turn_PID));
+        Goto_Item_Init(PAGE(PID), ITEM(goto__Line_PID), "Line_PID", PAGE(Line_PID));
 
     Ordinary_Page_Init(PAGE(PID), PAGE(Speed_PID), "Speed_PID", Speed_PID_items, 3);
         Data_Item_Init(PAGE(Speed_PID), ITEM(speed_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.speed_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Speed_Pid__Kp_Callback);
@@ -929,10 +930,10 @@ void Easy_Menu_Ui_Init(void)
         Data_Item_Init(PAGE(Angle_PID), ITEM(angle_pid__ki), "ki", FLOAT, &Easy_Menu_Ui_Data.Angle_Ki, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Angle_Pid__Ki_Callback);
         Data_Item_Init(PAGE(Angle_PID), ITEM(angle_pid__kd), "kd", FLOAT, &Easy_Menu_Ui_Data.Angle_Kd, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Angle_Pid__Kd_Callback);
 
-    Ordinary_Page_Init(PAGE(PID), PAGE(Turn_PID), "Turn_PID", Turn_PID_items, 3);
-        Data_Item_Init(PAGE(Turn_PID), ITEM(turn_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.Turn_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Turn_Pid__Kp_Callback);
-        Data_Item_Init(PAGE(Turn_PID), ITEM(turn_pid__ki), "ki", FLOAT, &Easy_Menu_Ui_Data.Turn_Ki, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Turn_Pid__Ki_Callback);
-        Data_Item_Init(PAGE(Turn_PID), ITEM(turn_pid__kd), "kd", FLOAT, &Easy_Menu_Ui_Data.Turn_Kd, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Turn_Pid__Kd_Callback);
+    Ordinary_Page_Init(PAGE(PID), PAGE(Line_PID), "Line_PID", Line_PID_items, 3);
+        Data_Item_Init(PAGE(Line_PID), ITEM(line_pid__kp), "kp", FLOAT, &Easy_Menu_Ui_Data.Line_Kp, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Line_Pid__Kp_Callback);
+        Data_Item_Init(PAGE(Line_PID), ITEM(line_pid__ki), "ki", FLOAT, &Easy_Menu_Ui_Data.Line_Ki, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Line_Pid__Ki_Callback);
+        Data_Item_Init(PAGE(Line_PID), ITEM(line_pid__kd), "kd", FLOAT, &Easy_Menu_Ui_Data.Line_Kd, FLOAT_VAL(0.5), 1, FLOAT_VAL(0), 0, FLOAT_VAL(0), 0, Line_Pid__Kd_Callback);
 
     Ordinary_Page_Init(PAGE(main_page), PAGE(SG90), "SG90", SG90_items, 1);
         Data_Item_Init(PAGE(SG90), ITEM(sg90_angle), "angle", UNSIGNED_INT, &Easy_Menu_Ui_Data.angle, UNSIGNED_INT_VAL(5), 1, UNSIGNED_INT_VAL(0), 1, UNSIGNED_INT_VAL(180), 1, Sg90_Angle_Callback);

@@ -23,7 +23,7 @@ PID_t pid_steer = {
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 1
 };
 PID_t pid_line = {
-    .Kp = 0.5f, .Ki = 0.0f, .Kd = 0.1f,
+    .Kp = 5.0f, .Ki = 0.0f, .Kd = 0.1f,
     .OutMax = 500, .OutMin = -500,
     .IntegralMax = 300, .IntegralMin = -300,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 0
@@ -36,7 +36,7 @@ int16_t target_line  = 0;
 
 /* ============ 循迹状态 ============ */
 int16_t line_pos = 0;
-static const int8_t line_weight[8] = {-100, -80, -20, -8, 8, 20, 80, 100};
+static const int8_t line_weight[8] = {-60, -40, -20, -8, 8, 20, 40, 60};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
@@ -46,7 +46,7 @@ float CurrentDistance = 0.0f;
 /* ============ 正方形参数 ============ */
 float sq_target = 600.0f;
 float sq_turn_target = 90.0f;
-int16_t sq_target_speed = 600;
+int16_t sq_target_speed = 200;   //600;
 
 /* ============ 转弯辅助 ============ */
 static float turned = 0;
@@ -59,8 +59,8 @@ uint8_t sq_cycle_count = 0;
 /* ============ 循迹正方形参数 ============ */
 uint8_t ls_lap_target = 1;       // 目标圈数
 static uint8_t ls_lap_count = 0; // 已走圈数
-static uint8_t ls_corner_count = 0; // 角计数（4角=1圈）
-static uint8_t ls_corner_debounce = 0; // 角检测消抖
+static float ls_yaw_sum = 0;     // IMU累计角度
+static float ls_last_yaw = 0;    // 上一次yaw
 
 /* ================================================================ */
 void Task_Init(void)
@@ -235,64 +235,23 @@ void Task_Square(void)
 /*                     任务2：循迹正方形                              */
 /* ================================================================ */
 
-void Task_LineSquare_Start(void)
+// ---- 循迹核心：速度环 + 循迹环 ----
+void Task_LineSquare(void)
+{
+    Line_CalcPosition();
+    pid_speed.Enabled = 1;
+    pid_line.Enabled = 1;
+    pid_steer.Enabled = 0;
+    target_speed = sq_target_speed;
+    target_line = 0;
+    PID_Calc();
+}
+
+
+// ---- 任务：直线循迹（测试用，跑10秒停）----
+void Task_Line_Start(void)
 {
     task_mode = TASK_LINE_SQUARE;
     Task_Init();
-    ls_lap_count = 0;
-    ls_corner_count = 0;
-    ls_corner_debounce = 0;
-    pid_speed.Enabled = 1;
-    pid_steer.Enabled = 0;   // 不用转向环
-    pid_line.Enabled = 1;    // 用循迹环
-    target_line = 0;         // 循迹目标：线在中间
-    target_speed = sq_target_speed;
 }
 
-void Task_LineSquare(void)
-{
-    // 更新循迹位置
-    Line_CalcPosition();
-
-    // 速度控制
-    target_speed = sq_target_speed;
-
-    // 循迹PID控制
-    pid_speed.Enabled = 1;
-    pid_steer.Enabled = 0;
-    pid_line.Enabled = 1;
-    PID_Calc();
-
-    // 角检测：8路全黑 = 到达顶点
-    extern char gray_digital_str[9];
-    uint8_t all_black = 1;
-    for (int i = 0; i < 8; i++)
-    {
-        if (gray_digital_str[i] != '1') { all_black = 0; break; }
-    }
-
-    if (all_black)
-    {
-        if (ls_corner_debounce == 0)
-        {
-            ls_corner_count++;
-            ls_corner_debounce = 1;
-
-            if (ls_corner_count >= 4)
-            {
-                ls_corner_count = 0;
-                ls_lap_count++;
-
-                if (ls_lap_count >= ls_lap_target)
-                {
-                    task_mode = TASK_IDLE;
-                    return;
-                }
-            }
-        }
-    }
-    else
-    {
-        ls_corner_debounce = 0;
-    }
-}

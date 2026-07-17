@@ -297,7 +297,7 @@ int main(void)
         // 菜单触发：启动循迹正方形任务
         if (line_square_flag && task_mode == TASK_IDLE)
         {
-            Task_LineSquare_Start();
+            Task_Line_Start();
             line_square_flag = 0;
         }
 
@@ -316,7 +316,7 @@ int main(void)
             for (int i = 0; i < 8; i++)
             {
                 unsigned short th = (gray_threshold[i] > 0) ? gray_threshold[i] : 2000;
-                gray_digital_str[7 - i] = (gray_analog[i] > th) ? '1' : '0';
+                gray_digital_str[i] = (gray_analog[i] > th) ? '1' : '0';
             }
             gray_digital_str[8] = '\0';
 
