@@ -505,6 +505,11 @@
               <FilePath>..\USER\Motor\encoder.c</FilePath>
             </File>
             <File>
+              <FileName>blueserial.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\BlueSerial\blueserial.c</FilePath>
+            </File>
+            <File>
               <FileName>motor.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\Motor\motor.c</FilePath>

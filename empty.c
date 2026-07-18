@@ -11,6 +11,7 @@
 #include "Easy_Menu.h"
 #include "Key.h"
 #include "bsp_sg90.h"
+#include "USER/BlueSerial/blueserial.h"
 
 void TimeA1_Init(void);
 static void LCD_Display_Char(unsigned short int x, unsigned short int y, char ch, unsigned char reverse_flag);
@@ -210,6 +211,7 @@ int main(void)
 
     Motor_Init();
     Encoder_Init();
+    BlueSerial_Init();
 
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -234,6 +236,7 @@ int main(void)
     {
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）
         Easy_Menu_Display(menu_count);
+
 
         if (_5ms_flag)
         {
@@ -278,12 +281,11 @@ int main(void)
             Line_CalcPosition();   // 循迹线位置（每10ms更新）
             Task_Run();            // 任务调度（非阻塞）
 
-            // 调试：每100ms打印状态
+            // 每100ms：蓝牙发送yaw
             {
-                static uint8_t dbg = 0;
-                if (++dbg >= 10) { dbg = 0;
-                    printf("task:%d pt:%d dist:%.0f spd:%d yaw:%.1f\r\n",
-                        task_mode, current_point, CurrentDistance, speedA, yaw_angle);
+                static uint8_t bt_cnt = 0;
+                if (++bt_cnt >= 10) { bt_cnt = 0;
+                    BlueSerial_SendYaw(yaw_angle);
                 }
             }
         }
