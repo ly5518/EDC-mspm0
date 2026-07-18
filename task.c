@@ -239,7 +239,8 @@ void Task_Square(void)
 typedef enum { LF_FOLLOW, LF_TURNING } LFState_t;
 static LFState_t lf_state = LF_FOLLOW;
 static float lf_turn_start = 0;
-static uint8_t lf_lap_count = 0;
+static uint8_t lf_corner_count = 0;  // 当前圈已转角数
+static uint8_t lf_lap_count = 0;     // 已完成圈数
 
 void Task_LineSquare(void)
 {
@@ -286,15 +287,23 @@ void Task_LineSquare(void)
         if (fabs(turned) >= 55.0f && line_found)
         {
             lf_state = LF_FOLLOW;
-            lf_lap_count++;
+            lf_corner_count++;
             PID_Clear(&pid_steer);
             PID_Clear(&pid_line);
 
-            if (lf_lap_count >= 4)
+            // 4个角 = 1圈
+            if (lf_corner_count >= 4)
             {
-                lf_lap_count = 0;
-                task_mode = TASK_IDLE;
-                Set_PWM(0, 0);
+                lf_corner_count = 0;
+                lf_lap_count++;
+
+                // 走完指定圈数 → 停车
+                if (lf_lap_count >= ls_lap_target)
+                {
+                    lf_lap_count = 0;
+                    task_mode = TASK_IDLE;
+                    Set_PWM(0, 0);
+                }
             }
         }
     }
@@ -305,5 +314,7 @@ void Task_Line_Start(void)
 {
     task_mode = TASK_LINE_SQUARE;
     Task_Init();
+    lf_corner_count = 0;
+    lf_lap_count = 0;
 }
 

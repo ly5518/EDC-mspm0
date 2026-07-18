@@ -18,6 +18,7 @@ extern uint16_t gray_white_ref[8];    // 白色参考值
 extern uint16_t gray_black_ref[8];    // 黑色参考值
 extern uint16_t gray_threshold[8];    // 灰度阈值
 extern volatile int16_t speedA, speedB;            // 编码器速度
+extern uint8_t ls_lap_target;                      // 循迹圈数目标
 extern void Gray_White_Cal_Start(void);
 extern void Gray_Black_Cal_Start(void);
 void Gray_Digital_Format(void *data, char *buf, int buf_size);    // 灰度数字值
@@ -522,7 +523,7 @@ void Encoder__Line__Flag_Callback(unsigned char data)
 void Sqline_Lap_Target_Callback(void *data) // *((unsigned char*)data)
 {
     /* USER CODE BEGIN */
-   unsigned char ls_lap_target = *((unsigned char*)data);
+   ls_lap_target = *((unsigned char*)data);
     /* USER CODE END */
 }
 
