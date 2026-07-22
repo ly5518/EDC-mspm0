@@ -41,6 +41,7 @@
 #define ti_msp_dl_config_h
 
 #define CONFIG_MSPM0G350X
+#define CONFIG_MSPM0G3507
 
 #if defined(__ti_version__) || defined(__TI_COMPILER_VERSION__)
 #define SYSCONFIG_WEAK __attribute__((weak))
@@ -160,6 +161,7 @@ extern "C" {
 
 /* Defines for UART_0 */
 #define UART_0_INST                                                        UART0
+#define UART_0_INST_FREQUENCY                                            4000000
 #define UART_0_INST_IRQHandler                                  UART0_IRQHandler
 #define UART_0_INST_INT_IRQN                                      UART0_INT_IRQn
 #define GPIO_UART_0_RX_PORT                                                GPIOA
@@ -175,6 +177,7 @@ extern "C" {
 #define UART_0_FBRD_4_MHZ_115200_BAUD                                       (11)
 /* Defines for UART_blueserial */
 #define UART_blueserial_INST                                               UART1
+#define UART_blueserial_INST_FREQUENCY                                   4000000
 #define UART_blueserial_INST_IRQHandler                         UART1_IRQHandler
 #define UART_blueserial_INST_INT_IRQN                             UART1_INT_IRQn
 #define GPIO_UART_blueserial_RX_PORT                                       GPIOB
@@ -235,7 +238,7 @@ extern "C" {
 #define ADC12_0_INST_INT_IRQN                                    (ADC0_INT_IRQn)
 #define ADC12_0_ADCMEM_ADC_CH0                                DL_ADC12_MEM_IDX_0
 #define ADC12_0_ADCMEM_ADC_CH0_REF               DL_ADC12_REFERENCE_VOLTAGE_VDDA
-#define ADC12_0_ADCMEM_ADC_CH0_REF_VOLTAGE                                      -1 // VDDA cannot be determined
+#define ADC12_0_ADCMEM_ADC_CH0_REF_VOLTAGE_V                                     3.3
 #define GPIO_ADC12_0_C0_PORT                                               GPIOA
 #define GPIO_ADC12_0_C0_PIN                                       DL_GPIO_PIN_27
 

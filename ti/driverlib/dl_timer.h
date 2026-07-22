@@ -2037,6 +2037,8 @@ typedef struct {
     DL_TIMER_PWM_MODE pwmMode;
     /*! Start timer after configuration @ref DL_TIMER */
     DL_TIMER startTimer;
+    /*! Whether the timer has four capture/compare channels (SysConfig compatibility) */
+    bool isTimerWithFourCC;
 } DL_Timer_PWMConfig;
 
 /**

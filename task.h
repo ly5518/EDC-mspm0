@@ -14,6 +14,7 @@ typedef enum {
     TASK_IDLE = 0,
     TASK_SQUARE,
     TASK_LINE_SQUARE,
+    TASK_LEFT_TURN,
 } TaskMode_t;
 
 /* ============ 任务节点 ============ */
@@ -61,5 +62,9 @@ void Task_Square_Start(void);
 void Task_Square(void);
 void Task_Line_Start(void);
 void Task_LineSquare(void);
+void Task_LeftTurn(void);
+void Task_LeftTurn_Start(void);
+/* ============ 菜单触发标志 ============ */
+extern volatile uint8_t leftturn_flag;
 
 #endif

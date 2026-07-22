@@ -144,6 +144,9 @@ void Task_Run(void)
     case TASK_LINE_SQUARE:
         Task_LineSquare();
         break;
+    case TASK_LEFT_TURN:
+        Task_LeftTurn();
+        break;
     }
 }
 
@@ -275,7 +278,7 @@ void Task_LineSquare(void)
         if (target_yaw < -180.0f) target_yaw += 360.0f;
         PID_Calc();
 
-        // 转够80° 且 线重新出现 → 回到循迹
+        // 转够55° 且 线重新出现 → 回到循迹
         float turned = yaw_angle - lf_turn_start;
         if (turned > 180.0f)  turned -= 360.0f;
         if (turned < -180.0f) turned += 360.0f;
@@ -318,3 +321,13 @@ void Task_Line_Start(void)
     lf_lap_count = 0;
 }
 
+
+void Task_LeftTurn_Start(void)
+{
+    task_mode = TASK_LEFT_TURN;  
+    Task_Init();
+}
+void Task_LeftTurn(void)
+{
+    Set_PWM(1000, -1000);
+}

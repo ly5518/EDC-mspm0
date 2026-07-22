@@ -10,6 +10,7 @@
 #include "motor.h"
 #include "bsp_sg90.h"
 #include "pid.h"
+#include "task.h"
 extern float ypr[3];
 extern float yaw_angle;
 extern char gray_digital_str[9];
@@ -63,6 +64,7 @@ struct {
     unsigned char square_flag;
     unsigned char sqline__flag;
     unsigned char ls_lap_target;
+    unsigned char leftturn_flag;
     float speed_Kp;
     float speed_Ki;
     float speed_Kd;
@@ -109,6 +111,7 @@ struct {
     .square_flag = 0,
     .sqline__flag = 0,
     .ls_lap_target = 1,
+    .leftturn_flag = 0,
     .speed_Kp = 0.0f,
     .speed_Ki = 0.0f,
     .speed_Kd = 0.0f,
@@ -198,6 +201,7 @@ Ordinary_Page main_page;
         Switch_Item encoder_square_flag;
         Switch_Item encoder__line__flag;
         Data_Item sqline_lap_target;
+        Switch_Item encoder_left_turn;
     Ordinary_Page PID;
         Goto_Item goto__Speed_PID;
         Goto_Item goto__Angle_PID;
@@ -527,6 +531,16 @@ void Sqline_Lap_Target_Callback(void *data) // *((unsigned char*)data)
     /* USER CODE END */
 }
 
+void Encoder_Left_Turn_Callback(unsigned char data)
+{
+    /* USER CODE BEGIN */
+    extern volatile uint8_t leftturn_flag;
+    if (data == 1)
+        leftturn_flag = 1;
+    printf("LT_CB:%d\r\n", data);
+    /* USER CODE END */
+}
+
 void Speed_Pid__Kp_Callback(void *data) // *((float*)data)
 {
     /* USER CODE BEGIN */
@@ -796,12 +810,13 @@ Item *Gray_items[12] = {
     ITEM(gray__12__item)
 };
 
-Item *encoder_items[5] = {
+Item *encoder_items[6] = {
     ITEM(show_speedA),
     ITEM(show_speedB),
     ITEM(encoder_square_flag),
     ITEM(encoder__line__flag),
-    ITEM(sqline_lap_target)
+    ITEM(sqline_lap_target),
+    ITEM(encoder_left_turn)
 };
 
 Item *PID_items[3] = {
@@ -921,12 +936,13 @@ void Easy_Menu_Ui_Init(void)
         Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
         Show_Item_Init(PAGE(Gray), ITEM(gray__12__item), "gray__12__item", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray__12__item__data, 100, Gray__12__Item_Callback);
 
-    Ordinary_Page_Init(PAGE(main_page), PAGE(encoder), "encoder", encoder_items, 5);
+    Ordinary_Page_Init(PAGE(main_page), PAGE(encoder), "encoder", encoder_items, 6);
         Show_Item_Init(PAGE(encoder), ITEM(show_speedA), "speedA", FLOAT, &Easy_Menu_Ui_Data.speedA, 10, Show_Speeda_Callback);
         Show_Item_Init(PAGE(encoder), ITEM(show_speedB), "speedB", FLOAT, &Easy_Menu_Ui_Data.speedB, 10, Show_Speedb_Callback);
         Switch_Item_Init(PAGE(encoder), ITEM(encoder_square_flag), "square_flag", &Easy_Menu_Ui_Data.square_flag, Encoder_Square_Flag_Callback);
         Switch_Item_Init(PAGE(encoder), ITEM(encoder__line__flag), "sqline__flag", &Easy_Menu_Ui_Data.sqline__flag, Encoder__Line__Flag_Callback);
         Data_Item_Init(PAGE(encoder), ITEM(sqline_lap_target), "lap_target", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.ls_lap_target, UNSIGNED_CHAR_VAL(1), 1, UNSIGNED_CHAR_VAL(0), 0, UNSIGNED_CHAR_VAL(0), 0, Sqline_Lap_Target_Callback);
+        Switch_Item_Init(PAGE(encoder), ITEM(encoder_left_turn), "left turn", &Easy_Menu_Ui_Data.leftturn_flag, Encoder_Left_Turn_Callback);
 
     Ordinary_Page_Init(PAGE(main_page), PAGE(PID), "PID", PID_items, 3);
         Goto_Item_Init(PAGE(PID), ITEM(goto__Speed_PID), "Speed_PID", PAGE(Speed_PID));

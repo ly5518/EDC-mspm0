@@ -23,6 +23,7 @@ extern uint32_t nowtime;
 volatile uint32_t count = 0;
 volatile uint8_t square_flag = 0;      // 菜单触发正方形任务
 volatile uint8_t line_square_flag = 0; // 菜单触发循迹正方形任务
+volatile uint8_t leftturn_flag = 0;  // 菜单触发原地左转
 static uint32_t menu_count = 0;
 volatile uint8_t _1ms_flag = 0;
 volatile uint8_t _5ms_flag = 0;
@@ -303,6 +304,12 @@ int main(void)
             Task_Line_Start();
             line_square_flag = 0;
         }
+        // 菜单触发：原地旋转
+        if (leftturn_flag && task_mode == TASK_IDLE)
+        {
+            Task_LeftTurn_Start();
+            leftturn_flag = 0;
+        }
 
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
@@ -366,6 +373,12 @@ void TIMER_1_INST_IRQHandler(void)
     default:
         break;
     }
+}
+
+// 蓝牙串口 UART1 中断处理（RX 中断已启用，必须清除标志，否则系统挂死）
+void UART_blueserial_INST_IRQHandler(void)
+{
+    DL_UART_Main_receiveData(UART_blueserial_INST); // 读取数据清标志
 }
 
 // GPIO中断处理（按键 + NRF24L01）

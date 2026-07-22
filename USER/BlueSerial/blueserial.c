@@ -11,8 +11,8 @@
 void BlueSerial_Init(void)
 {
     DL_UART_Main_enable(BT_UART);
-
-    BlueSerial_SendString("BT_OK\r\n");
+    printf("BT_INIT\r\n");  // 通过调试串口确认初始化执行了
+    BlueSerial_SendString("hello\r\n");
 }
 
 void BlueSerial_SendChar(char ch)
@@ -29,7 +29,11 @@ void BlueSerial_SendString(const char *str)
 
 void BlueSerial_SendYaw(float yaw)
 {
+    // 整数+小数分开算，避免snprintf不支持浮点
+    int whole = (int)yaw;
+    int frac = (int)((yaw - whole) * 100);
+    if (frac < 0) frac = -frac;
     char buf[32];
-    snprintf(buf, sizeof(buf), "[yaw,%.2f]\r\n", yaw);
+    snprintf(buf, sizeof(buf), "[yaw,%d.%02d]\r\n", whole, frac);
     BlueSerial_SendString(buf);
 }
