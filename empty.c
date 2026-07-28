@@ -155,45 +155,7 @@ void Yaw_Zero(void)
 /* ================================================================ 主函数 ================================================================ */
 int main(void)
 {
-    // int i = 0;
-
-    // SYSCFG_DL_init();
-
-    // Set_Servo_Angle(0);
-    // delay_ms(1000);
-    // Set_Servo_Angle(45);
-    // delay_ms(1000);
-    // Set_Servo_Angle(90);
-    // delay_ms(1000);
-    // Set_Servo_Angle(135);
-    // delay_ms(1000);
-    // Set_Servo_Angle(180);
-    // delay_ms(1000);
-    // Set_Servo_Angle(135);
-    // delay_ms(1000);
-    // Set_Servo_Angle(90);
-    // delay_ms(1000);
-    // Set_Servo_Angle(45);
-    // delay_ms(1000);
-    // Set_Servo_Angle(0);
-    // delay_ms(1000);
-    // while(1)
-    // {
-    //     // i: 0→180→0，映射成角度
-    //     int angle;
-    //     if(i <= 180)
-    //         angle = i;
-    //     else
-    //         angle = 360 - i;
-
-    //     Set_Servo_Angle(angle);
-    //     delay_ms(10);
-
-    //     i++;
-    //     if(i >= 360) i = 0;
-    // }
-    
-
+   
 
     board_init();
     delay_ms(100);
@@ -221,17 +183,7 @@ int main(void)
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
 
-//     /* 呼吸灯变量 */
-//     int breath_pwm = 0;
-//     int breath_dir = 1;
-//     int breath_cnt = 0;
 
-//     /* 定距控制变量 */
-//     #define TARGET_DIST_MM  2000   // 目标距离(mm)
-//     #define DRIVE_PWM       2000  // 驱动PWM
-//     uint8_t dist_mode = 0;        // 1=定距模式, 0=停止（已由状态机控制）
-// uint8_t reset_flag = 0;       // 串口发'r'重置距离
-//     uint8_t dist_done = 0;
 
     while (1)
     {
@@ -277,8 +229,6 @@ int main(void)
         if (_10ms_flag)
         {
             _10ms_flag = 0;
-
-            Encoder_CalcSpeed();   // 编码器速度计算（必须定时采样）
             Line_CalcPosition();   // 循迹线位置（每10ms更新）
             Task_Run();            // 任务调度（非阻塞）
 
@@ -291,24 +241,39 @@ int main(void)
             }
         }
 
-        // 菜单触发：启动正方形任务
-        if (square_flag && task_mode == TASK_IDLE)
+        // 菜单触发任务（互斥：启动新任务自动停掉旧任务）
+        if (square_flag)
         {
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
             Task_Square_Start();
-            square_flag = 0;
+        }
+        else if (line_square_flag)
+        {
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            Task_Line_Start();
+        }
+        else if (leftturn_flag)
+        {
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            Task_LeftTurn_Start();
+        }
+        else if (postrack_flag)
+        {
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            Task_PosTrack_Start();
         }
 
-        // 菜单触发：启动循迹正方形任务
-        if (line_square_flag && task_mode == TASK_IDLE)
+        // 蓝牙解析 [ERR,x,y] → 位置追踪（仅在位置追踪任务运行时处理）
+        if (BlueSerial_HasErr())
         {
-            Task_Line_Start();
-            line_square_flag = 0;
-        }
-        // 菜单触发：原地旋转
-        if (leftturn_flag && task_mode == TASK_IDLE)
-        {
-            Task_LeftTurn_Start();
-            leftturn_flag = 0;
+            int16_t err_x = BlueSerial_GetErrX();
+            int16_t err_y = BlueSerial_GetErrY();
+            printf("[BT] raw:\"%s\" | err_x=%d, err_y=%d\r\n",
+                   BlueSerial_GetRaw(), err_x, err_y);
+            BlueSerial_ClearErr();
+
+            if (task_mode == TASK_POSITION_TRACK)
+                Task_PosTrack_SetErr(err_x);
         }
 
         // 每 100ms 采集灰度并打印模拟量
@@ -367,18 +332,13 @@ void TIMER_1_INST_IRQHandler(void)
         {
             count = 0;
             _10ms_flag = 1;
+            Encoder_CalcSpeed();  // 编码器采样（必须精确定时）
         }
         DL_TimerG_clearInterruptStatus(TIMER_1_INST, DL_TIMER_IIDX_ZERO);
         break;
     default:
         break;
     }
-}
-
-// 蓝牙串口 UART1 中断处理（RX 中断已启用，必须清除标志，否则系统挂死）
-void UART_blueserial_INST_IRQHandler(void)
-{
-    DL_UART_Main_receiveData(UART_blueserial_INST); // 读取数据清标志
 }
 
 // GPIO中断处理（按键 + NRF24L01）

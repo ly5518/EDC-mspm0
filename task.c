@@ -55,6 +55,7 @@ static float turn_target = 0;
 static float sq_straight_yaw = 0;
 static uint8_t straight_init = 0;
 uint8_t sq_cycle_count = 0;
+volatile uint8_t postrack_flag = 0;
 
 /* ============ 循迹正方形参数 ============ */
 uint8_t ls_lap_target = 1;       // 目标圈数
@@ -65,6 +66,7 @@ static float ls_last_yaw = 0;    // 上一次yaw
 /* ================================================================ */
 void Task_Init(void)
 {
+    Set_PWM(0, 0);  // 切换任务时先停电机
     PID_Clear(&pid_speed);
     PID_Clear(&pid_steer);
     PID_Clear(&pid_line);
@@ -146,6 +148,9 @@ void Task_Run(void)
         break;
     case TASK_LEFT_TURN:
         Task_LeftTurn();
+        break;
+    case TASK_POSITION_TRACK:
+        Task_PosTrack();
         break;
     }
 }
@@ -330,4 +335,55 @@ void Task_LeftTurn_Start(void)
 void Task_LeftTurn(void)
 {
     Set_PWM(1000, -1000);
+}
+
+/* ================================================================ */
+/*                  任务4：蓝牙位置追踪                               */
+/* ================================================================ */
+
+#define POS_TRACK_BASE_SPEED  300
+
+static int16_t pos_track_err_x = 0;
+
+void Task_PosTrack_SetErr(int16_t x)
+{
+    pos_track_err_x = x;
+}
+
+void Task_PosTrack_Start(void)
+{
+    Task_Init();
+    task_mode = TASK_POSITION_TRACK;
+    pos_track_err_x = 0;
+    pid_speed.Enabled = 1;
+    pid_steer.Enabled = 1;
+    pid_line.Enabled = 0;
+    PID_Clear(&pid_speed);
+    PID_Clear(&pid_steer);
+    target_speed = POS_TRACK_BASE_SPEED;
+}
+
+void Task_PosTrack(void)
+{
+    /* 速度环 */
+    float ave_speed = ((float)speedA + (float)speedB) / 2.0f;
+    PID_SetTarget(&pid_speed, (float)target_speed);
+    PID_Update(&pid_speed, ave_speed);
+
+    /* 转向环：目标=0（居中），当前=偏差x */
+    PID_SetTarget(&pid_steer, 0.0f);
+    PID_Update(&pid_steer, (float)pos_track_err_x);
+
+    int pwm   = (int)pid_speed.Out;
+    int steer = (int)pid_steer.Out;
+
+    int left  = pwm - steer;  // err_x>0(目标在左) → 左轮慢 → 左转
+    int right = pwm + steer;
+
+    if (left > PWM_MAX) left = PWM_MAX;
+    if (left < PWM_MIN) left = PWM_MIN;
+    if (right > PWM_MAX) right = PWM_MAX;
+    if (right < PWM_MIN) right = PWM_MIN;
+
+    Set_PWM(left, right);
 }

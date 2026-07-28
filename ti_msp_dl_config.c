@@ -418,7 +418,6 @@ static const DL_TimerG_ClockConfig gPWM_SG90ClockConfig = {
 static const DL_TimerG_PWMConfig gPWM_SG90Config = {
     .pwmMode = DL_TIMER_PWM_MODE_EDGE_ALIGN,
     .period = 2000,
-    .isTimerWithFourCC = false,
     .startTimer = DL_TIMER_START,
 };
 
@@ -615,11 +614,11 @@ SYSCONFIG_WEAK void SYSCFG_DL_UART_blueserial_init(void)
     DL_UART_Main_init(UART_blueserial_INST, (DL_UART_Main_Config *) &gUART_blueserialConfig);
     /*
      * Configure baud rate by setting oversampling and baud rate divisors.
-     *  Target baud rate: 9600
-     *  Actual baud rate: 9598.08
+     *  Target baud rate: 115200
+     *  Actual baud rate: 115107.91
      */
     DL_UART_Main_setOversampling(UART_blueserial_INST, DL_UART_OVERSAMPLING_RATE_16X);
-    DL_UART_Main_setBaudRateDivisor(UART_blueserial_INST, UART_blueserial_IBRD_4_MHZ_9600_BAUD, UART_blueserial_FBRD_4_MHZ_9600_BAUD);
+    DL_UART_Main_setBaudRateDivisor(UART_blueserial_INST, UART_blueserial_IBRD_4_MHZ_115200_BAUD, UART_blueserial_FBRD_4_MHZ_115200_BAUD);
 
 
     /* Configure Interrupts */

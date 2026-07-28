@@ -15,6 +15,7 @@ typedef enum {
     TASK_SQUARE,
     TASK_LINE_SQUARE,
     TASK_LEFT_TURN,
+    TASK_POSITION_TRACK,
 } TaskMode_t;
 
 /* ============ 任务节点 ============ */
@@ -64,7 +65,11 @@ void Task_Line_Start(void);
 void Task_LineSquare(void);
 void Task_LeftTurn(void);
 void Task_LeftTurn_Start(void);
+void Task_PosTrack_Start(void);
+void Task_PosTrack(void);
+void Task_PosTrack_SetErr(int16_t x);
 /* ============ 菜单触发标志 ============ */
 extern volatile uint8_t leftturn_flag;
+extern volatile uint8_t postrack_flag;
 
 #endif
