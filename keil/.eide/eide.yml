@@ -1,7 +1,7 @@
 version: "4.1"
 name: empty_LP_MSPM0G3507_nortos_keil
 type: ARM
-deviceName: null
+deviceName: MSPM0G3507
 packDir: .pack/TexasInstruments/MSPM0G1X0X_G3X0X_DFP.1.3.1
 srcDirs:
   - ../USER
@@ -19,7 +19,6 @@ virtualFolder:
         - path: ../board.c
         - path: ../basic_read_reg.c
         - path: ../task.c
-        - path: ../sysctl_init.c
       folders: []
     - name: Driverlib
       files:
@@ -27,6 +26,7 @@ virtualFolder:
         - path: ../ti/driverlib/dl_aes.c
         - path: ../ti/driverlib/dl_aesadv.c
         - path: ../ti/driverlib/dl_common.c
+        - path: ../ti/driverlib/m0p/sysctl/dl_sysctl_mspm0g1x0x_g3x0x.c
         - path: ../ti/driverlib/dl_crc.c
         - path: ../ti/driverlib/dl_crcp.c
         - path: ../ti/driverlib/dl_dac12.c
@@ -72,8 +72,12 @@ targets:
         - ../USER/Key
         - ../USER/LED
         - ../USER/PID
+        - ../USER/ZDT
+        - ../USER/maixcam
       libList: []
-    excludeList: []
+    excludeList:
+      - ../USER/Gray/ADC.c
+      - ../USER/Gray/Gray.c
     settings:
       debugger: cortex-debug
     toolchain: AC6
@@ -90,7 +94,7 @@ targets:
           beforeBuildTasks:
             - name: Run Sysconfig
               abortAfterFailed: true
-              command: call ..\..\tools\keil\syscfg.bat . empty.syscfg
+              command: call "E:\study_2\mspm0g3507\my_project\EDC-mspm0\keil\syscfg.bat" . empty.syscfg
               disable: false
               stopBuildAfterFailed: true
           c/cpp-compiler:
@@ -195,7 +199,7 @@ targets:
         proType: 1
         speed: 8000
       pyOCD:
-        baseAddr: "0x08000000"
+        baseAddr: "0x00000000"
         bin: ""
         config: .eide/mspm0g3507_project.pyocd.yaml
         otherCmds: ""

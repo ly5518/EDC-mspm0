@@ -7,7 +7,7 @@
 #include "encoder.h"
 #include "motor.h"
 #include "task.h"
-#include "Gray.h"
+// #include "Gray.h"  // 旧的8路模拟灰度传感器库，已注释
 #include "Easy_Menu.h"
 #include "Key.h"
 
@@ -42,22 +42,28 @@ extern float yaw_angle;
 /* ============ Yaw 角度（带清零补偿）============ */
 float yaw_angle = 0;          // 补偿后的 yaw 角（°），可直接使用
 static float yaw_offset = 0;  // 清零时记录的原始 yaw 值
-No_MCU_Sensor gray_sensor;     // 灰度传感器结构体
-unsigned short gray_analog[8]; // 原始模拟量缓存
-uint16_t gray_white_ref[8];    // 白场参考值
-uint16_t gray_black_ref[8];    // 黑场参考值
-uint16_t gray_threshold[8];    // 灰度阈值
-char gray_digital_str[9];      // 灰度二进制字符串 "10101001"
 
-/* ================================================================ 校准状态 ================================================================ */
-#define CAL_STATE_IDLE 0
-#define CAL_STATE_WHITE 1
-#define CAL_STATE_BLACK 2
-#define CAL_SAMPLE_NUM_USER 50 // 用户校准采样次数
+/* ============ 4路数字灰度传感器（A15, A16, A17, A27）============ */
+// 旧的8路模拟灰度传感器变量已注释
+// No_MCU_Sensor gray_sensor;     // 灰度传感器结构体
+// unsigned short gray_analog[8]; // 原始模拟量缓存
+// uint16_t gray_white_ref[8];    // 白场参考值
+// uint16_t gray_black_ref[8];    // 黑场参考值
+// uint16_t gray_threshold[8];    // 灰度阈值
 
-static uint8_t cal_state = CAL_STATE_IDLE;
-static uint8_t cal_sample_cnt = 0;
-static uint32_t cal_sum[8] = {0};
+// 新的4路数字灰度传感器变量
+char gray_digital_str[5];      // 灰度二进制字符串 "1010" (4位)
+uint8_t gray_digital_value;    // 灰度数字值 (低4位有效)
+
+/* ================================================================ 校准状态（已注释，数字传感器无需校准）================================================ */
+// #define CAL_STATE_IDLE 0
+// #define CAL_STATE_WHITE 1
+// #define CAL_STATE_BLACK 2
+// #define CAL_SAMPLE_NUM_USER 50 // 用户校准采样次数
+//
+// static uint8_t cal_state = CAL_STATE_IDLE;
+// static uint8_t cal_sample_cnt = 0;
+// static uint32_t cal_sum[8] = {0};
 
 /* 通过 extern 访问 Easy_Menu_User.c 中的数据结构体 */
 extern struct
@@ -76,77 +82,127 @@ extern struct
     float pitch, roll;
 } Easy_Menu_Ui_Data;
 
-/* ================================================================ 校准函数 ================================================================ */
-#define CAL_SAMPLE_NUM 100 // 校准采样次数
+/* ================================================================ 校准函数（已注释，数字传感器无需校准）================================================ */
+// #define CAL_SAMPLE_NUM 100 // 校准采样次数
+//
+// extern void Get_Analog_value(unsigned short *result);
+//
+// /* 采集 N 次模拟量并求平均 */
+// static void Gray_Collect_Average(unsigned short *result)
+// {
+//     unsigned int sum[8] = {0};
+//     unsigned short buf[8];
+//     for (int n = 0; n < CAL_SAMPLE_NUM; n++)
+//     {
+//         Get_Analog_value(buf);
+//         for (int i = 0; i < 8; i++)
+//             sum[i] += buf[i];
+//         delay_us(500);
+//     }
+//     for (int i = 0; i < 8; i++)
+//         result[i] = sum[i] / CAL_SAMPLE_NUM;
+// }
+//
+// /* 计算阈值：靠黑色端 1/3 等分点 = (白 + 2×黑) / 3 */
+// static void Gray_Calc_Threshold(void)
+// {
+//     for (int i = 0; i < 8; i++)
+//     {
+//         if (gray_white_ref[i] > 0 && gray_black_ref[i] > 0)
+//             gray_threshold[i] = (gray_white_ref[i] + 2 * gray_black_ref[i]) / 3;
+//         else
+//             gray_threshold[i] = 2000; // 未校准的默认值
+//     }
+// }
+//
+// /* 白场校准启动（由菜单 Switch 回调调用）*/
+// void Gray_White_Cal_Start(void)
+// {
+//     for (int i = 0; i < 8; i++)
+//         cal_sum[i] = 0;
+//     cal_sample_cnt = 0;
+//     cal_state = CAL_STATE_WHITE;
+// }
+//
+// /* 黑场校准启动（由菜单 Switch 回调调用）*/
+// void Gray_Black_Cal_Start(void)
+// {
+//     for (int i = 0; i < 8; i++)
+//         cal_sum[i] = 0;
+//     cal_sample_cnt = 0;
+//     cal_state = CAL_STATE_BLACK;
+// }
+//
+// /* 校准增量采集（在主循环 100ms 周期中调用，每次采集 1 个样本）*/
+// static void Gray_Cal_Collect_Incremental(void)
+// {
+//     if (cal_state == CAL_STATE_IDLE)
+//         return;
+//
+//     unsigned short buf[8];
+//     Get_Analog_value(buf);
+//     for (int i = 0; i < 8; i++)
+//         cal_sum[i] += buf[i];
+//     cal_sample_cnt++;
+//
+//     if (cal_sample_cnt >= CAL_SAMPLE_NUM_USER)
+//     {
+//         uint16_t *ref = (cal_state == CAL_STATE_WHITE) ? gray_white_ref : gray_black_ref;
+//         for (int i = 0; i < 8; i++)
+//             ref[i] = cal_sum[i] / CAL_SAMPLE_NUM_USER;
+//         Gray_Calc_Threshold();
+//         cal_state = CAL_STATE_IDLE;
+//     }
+// }
 
-extern void Get_Analog_value(unsigned short *result);
-
-/* 采集 N 次模拟量并求平均 */
-static void Gray_Collect_Average(unsigned short *result)
+/* ================================================================ 4路数字灰度传感器读取函数 ================================================================ */
+/**
+ * @brief  读取4路数字灰度传感器值
+ * @note   传感器连接：PA15, PA16, PA17, PA27
+ *         输出逻辑：检测到黑线=0，检测到白底=1
+ * @param  无
+ * @retval 4位数字值，bit0=PA15, bit1=PA16, bit2=PA17, bit3=PA27
+ */
+uint8_t Gray_Read_Digital(void)
 {
-    unsigned int sum[8] = {0};
-    unsigned short buf[8];
-    for (int n = 0; n < CAL_SAMPLE_NUM; n++)
-    {
-        Get_Analog_value(buf);
-        for (int i = 0; i < 8; i++)
-            sum[i] += buf[i];
-        delay_us(500);
-    }
-    for (int i = 0; i < 8; i++)
-        result[i] = sum[i] / CAL_SAMPLE_NUM;
+    uint8_t value = 0;
+
+    // 读取PA15 (bit0)
+    if (DL_GPIO_readPins(GPIOA, Gray_Address_PIN_2_PIN))
+        value |= (1 << 0);
+
+    // 读取PA16 (bit1)
+    if (DL_GPIO_readPins(GPIOA, Gray_Address_PIN_1_PIN))
+        value |= (1 << 1);
+
+    // 读取PA17 (bit2)
+    if (DL_GPIO_readPins(GPIOA, Gray_Address_PIN_0_PIN))
+        value |= (1 << 2);
+
+    // 读取PA27 (bit3)
+    if (DL_GPIO_readPins(GPIOA, Gray_Address_PIN_3_PIN))
+        value |= (1 << 3);
+
+    return value;
 }
 
-/* 计算阈值：靠黑色端 1/3 等分点 = (白 + 2×黑) / 3 */
-static void Gray_Calc_Threshold(void)
+/**
+ * @brief  更新灰度传感器字符串（供其他模块使用）
+ * @note   将4路数字值转换为字符串格式 "1010"
+ *         字符串索引：[0]=PA15, [1]=PA16, [2]=PA17, [3]=PA27
+ * @param  无
+ * @retval 无
+ */
+void Gray_Update_String(void)
 {
-    for (int i = 0; i < 8; i++)
-    {
-        if (gray_white_ref[i] > 0 && gray_black_ref[i] > 0)
-            gray_threshold[i] = (gray_white_ref[i] + 2 * gray_black_ref[i]) / 3;
-        else
-            gray_threshold[i] = 2000; // 未校准的默认值
-    }
-}
+    gray_digital_value = Gray_Read_Digital();
 
-/* 白场校准启动（由菜单 Switch 回调调用）*/
-void Gray_White_Cal_Start(void)
-{
-    for (int i = 0; i < 8; i++)
-        cal_sum[i] = 0;
-    cal_sample_cnt = 0;
-    cal_state = CAL_STATE_WHITE;
-}
-
-/* 黑场校准启动（由菜单 Switch 回调调用）*/
-void Gray_Black_Cal_Start(void)
-{
-    for (int i = 0; i < 8; i++)
-        cal_sum[i] = 0;
-    cal_sample_cnt = 0;
-    cal_state = CAL_STATE_BLACK;
-}
-
-/* 校准增量采集（在主循环 100ms 周期中调用，每次采集 1 个样本）*/
-static void Gray_Cal_Collect_Incremental(void)
-{
-    if (cal_state == CAL_STATE_IDLE)
-        return;
-
-    unsigned short buf[8];
-    Get_Analog_value(buf);
-    for (int i = 0; i < 8; i++)
-        cal_sum[i] += buf[i];
-    cal_sample_cnt++;
-
-    if (cal_sample_cnt >= CAL_SAMPLE_NUM_USER)
-    {
-        uint16_t *ref = (cal_state == CAL_STATE_WHITE) ? gray_white_ref : gray_black_ref;
-        for (int i = 0; i < 8; i++)
-            ref[i] = cal_sum[i] / CAL_SAMPLE_NUM_USER;
-        Gray_Calc_Threshold();
-        cal_state = CAL_STATE_IDLE;
-    }
+    // 生成4位二进制字符串
+    gray_digital_str[0] = (gray_digital_value & (1 << 0)) ? '1' : '0';  // PA15
+    gray_digital_str[1] = (gray_digital_value & (1 << 1)) ? '1' : '0';  // PA16
+    gray_digital_str[2] = (gray_digital_value & (1 << 2)) ? '1' : '0';  // PA17
+    gray_digital_str[3] = (gray_digital_value & (1 << 3)) ? '1' : '0';  // PA27
+    gray_digital_str[4] = '\0';
 }
 
 /* ================================================================ Yaw 清零 ================================================================ */
@@ -178,10 +234,12 @@ int main(void)
     Encoder_Init();
 
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
-    DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
-    DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    // DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    // DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    // No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
 
-    No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
+    // 4路数字灰度传感器无需初始化，GPIO已在SYSCFG_DL_GPIO_init()中配置为输入
+    // PA15, PA16, PA17, PA27 已配置为数字输入（无上下拉）
     delay_ms(20);
 
     while (1)
@@ -274,24 +332,14 @@ int main(void)
             task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
             Task5_start();
         }
-        // 每 100ms 采集灰度并打印模拟量
+        // 每 100ms 采集灰度并更新数字值
         if (print_flag)
         {
             print_flag = 0;
 
-            No_Mcu_Ganv_Sensor_Task_Without_tick(&gray_sensor); // 采集灰度
-            Get_Anolog_Value(&gray_sensor, gray_analog);        // 取原始模拟量
-
-            // 校准增量采集（非阻塞，每次 1 个样本）
-            Gray_Cal_Collect_Incremental();
-
-            // 使用校准阈值进行二值化，直接生成二进制字符串（MSB 在左：bit7 bit6 ... bit0）
-            for (int i = 0; i < 8; i++)
-            {
-                unsigned short th = (gray_threshold[i] > 0) ? gray_threshold[i] : 2000;
-                gray_digital_str[i] = (gray_analog[i] > th) ? '1' : '0';
-            }
-            gray_digital_str[8] = '\0';
+            // 读取4路数字灰度传感器（PA15, PA16, PA17, PA27）
+            // 检测到黑线=0，检测到白底=1
+            Gray_Update_String();
 
             // 计算循迹线位置
             Line_CalcPosition();

@@ -12,15 +12,17 @@
 #include "task.h"
 extern float ypr[3];
 extern float yaw_angle;
-extern char gray_digital_str[9];
-extern unsigned short gray_analog[8];   // 原始模拟量数据
-extern uint16_t gray_white_ref[8];      // 白色参考值
-extern uint16_t gray_black_ref[8];      // 黑色参考值
-extern uint16_t gray_threshold[8];      // 灰度阈值
+extern char gray_digital_str[5];        // 4路数字灰度传感器 + '\0'
+// 旧的8路模拟灰度传感器变量已注释
+// extern unsigned short gray_analog[8];   // 原始模拟量数据
+// extern uint16_t gray_white_ref[8];      // 白色参考值
+// extern uint16_t gray_black_ref[8];      // 黑色参考值
+// extern uint16_t gray_threshold[8];      // 灰度阈值
 extern volatile int16_t speedA, speedB; // 编码器速度
 extern uint8_t ls_lap_target;           // 循迹圈数目标
-extern void Gray_White_Cal_Start(void);
-extern void Gray_Black_Cal_Start(void);
+// 旧的校准函数已注释
+// extern void Gray_White_Cal_Start(void);
+// extern void Gray_Black_Cal_Start(void);
 void Gray_Digital_Format(void *data, char *buf, int buf_size); // 灰度数字值
 void Timer_Format(void *data, char *buf, int buf_size);        // 任务计时格式化
 
@@ -423,82 +425,98 @@ void Data_Show__Pitch_Callback(void)
 void Gray_Digital_Callback(void)
 {
     /* USER CODE BEGIN */
-    if (gray_digital.format == NULL)
-        gray_digital.format = Gray_Digital_Format;
+    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
+    extern uint8_t gray_digital_value;
+
+    // 更新4路数字传感器值
+    gray_digital_value = 0;
+    if (gray_digital_str[0] == '1') gray_digital_value |= (1 << 0);  // PA15
+    if (gray_digital_str[1] == '1') gray_digital_value |= (1 << 1);  // PA16
+    if (gray_digital_str[2] == '1') gray_digital_value |= (1 << 2);  // PA17
+    if (gray_digital_str[3] == '1') gray_digital_value |= (1 << 3);  // PA27
+
+    // 更新UI数据
+    Easy_Menu_Ui_Data.gray_digital_data = gray_digital_value;
+    Easy_Menu_Ui_Data.CH1_data = (gray_digital_str[0] == '1') ? 1 : 0;  // PA15
+    Easy_Menu_Ui_Data.CH2_data = (gray_digital_str[1] == '1') ? 1 : 0;  // PA16
+    Easy_Menu_Ui_Data.CH3_data = (gray_digital_str[2] == '1') ? 1 : 0;  // PA17
+    Easy_Menu_Ui_Data.CH4_data = (gray_digital_str[3] == '1') ? 1 : 0;  // PA27
     /* USER CODE END */
 }
 
-void Ch1_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH1_data = gray_analog[0];
-    /* USER CODE END */
-}
+// 旧的8路模拟灰度传感器回调函数已注释
+// void Ch1_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH1_data = gray_analog[0];
+//     /* USER CODE END */
+// }
+//
+// void Ch2_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH2_data = gray_analog[1];
+//     /* USER CODE END */
+// }
+//
+// void Ch3_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH3_data = gray_analog[2];
+//     /* USER CODE END */
+// }
+//
+// void Ch4_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH4_data = gray_analog[3];
+//     /* USER CODE END */
+// }
+//
+// void Ch5_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH5_data = gray_analog[4];
+//     /* USER CODE END */
+// }
+//
+// void Ch6_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH6_data = gray_analog[5];
+//     /* USER CODE END */
+// }
+//
+// void Ch7_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH7_data = gray_analog[6];
+//     /* USER CODE END */
+// }
+//
+// void Ch8_Callback(void)
+// {
+//     /* USER CODE BEGIN */
+//     Easy_Menu_Ui_Data.CH8_data = gray_analog[7];
+//     /* USER CODE END */
+// }
 
-void Ch2_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH2_data = gray_analog[1];
-    /* USER CODE END */
-}
-
-void Ch3_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH3_data = gray_analog[2];
-    /* USER CODE END */
-}
-
-void Ch4_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH4_data = gray_analog[3];
-    /* USER CODE END */
-}
-
-void Ch5_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH5_data = gray_analog[4];
-    /* USER CODE END */
-}
-
-void Ch6_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH6_data = gray_analog[5];
-    /* USER CODE END */
-}
-
-void Ch7_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH7_data = gray_analog[6];
-    /* USER CODE END */
-}
-
-void Ch8_Callback(void)
-{
-    /* USER CODE BEGIN */
-    Easy_Menu_Ui_Data.CH8_data = gray_analog[7];
-    /* USER CODE END */
-}
-
-void Gray_White_Cal_Callback(unsigned char data)
-{
-    /* USER CODE BEGIN */
-    if (data == 1)
-        Gray_White_Cal_Start();
-    /* USER CODE END */
-}
-
-void Gray_Black_Cal_Callback(unsigned char data)
-{
-    /* USER CODE BEGIN */
-    if (data == 1)
-        Gray_Black_Cal_Start();
-    /* USER CODE END */
-}
+// 旧的校准回调函数已注释
+// void Gray_White_Cal_Callback(unsigned char data)
+// {
+//     /* USER CODE BEGIN */
+//     if (data == 1)
+//         Gray_White_Cal_Start();
+//     /* USER CODE END */
+// }
+//
+// void Gray_Black_Cal_Callback(unsigned char data)
+// {
+//     /* USER CODE BEGIN */
+//     if (data == 1)
+//         Gray_Black_Cal_Start();
+//     /* USER CODE END */
+// }
 
 void Gray__12__Item_Callback(void)
 {
@@ -975,19 +993,12 @@ Item *Data_Show_items[3] = {
     ITEM(Data_Show__roll),
     ITEM(Data_Show__pitch)};
 
-Item *Gray_items[12] = {
+Item *Gray_items[5] = {
     ITEM(gray_digital),
     ITEM(CH1),
     ITEM(CH2),
     ITEM(CH3),
-    ITEM(CH4),
-    ITEM(CH5),
-    ITEM(CH6),
-    ITEM(CH7),
-    ITEM(CH8),
-    ITEM(gray_white_cal),
-    ITEM(gray_black_cal),
-    ITEM(gray__12__item)};
+    ITEM(CH4)};
 
 Item *encoder_items[6] = {
     ITEM(show_speedA),
@@ -1101,19 +1112,18 @@ void Easy_Menu_Ui_Init(void)
     Show_Item_Init(PAGE(Data_Show), ITEM(Data_Show__roll), "roll", FLOAT, &Easy_Menu_Ui_Data.roll, 10, Data_Show__Roll_Callback);
     Show_Item_Init(PAGE(Data_Show), ITEM(Data_Show__pitch), "pitch", FLOAT, &Easy_Menu_Ui_Data.pitch, 10, Data_Show__Pitch_Callback);
 
-    Ordinary_Page_Init(PAGE(main_page), PAGE(Gray), "Gray", Gray_items, 12);
+    // 4路数字灰度传感器菜单（PA15, PA16, PA17, PA27）
+    Ordinary_Page_Init(PAGE(main_page), PAGE(Gray), "Gray", Gray_items, 5);
     Show_Item_Init(PAGE(Gray), ITEM(gray_digital), "gray_digital", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray_digital_data, 10, Gray_Digital_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH1), "CH1", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH1_data, 10, Ch1_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH2), "CH2", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH2_data, 10, Ch2_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH3), "CH3", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH3_data, 10, Ch3_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH4), "CH4", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH4_data, 10, Ch4_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH5), "CH5", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH5_data, 10, Ch5_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH6), "CH6", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH6_data, 10, Ch6_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH7), "CH7", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH7_data, 10, Ch7_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(CH8), "CH8", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH8_data, 10, Ch8_Callback);
-    Switch_Item_Init(PAGE(Gray), ITEM(gray_white_cal), "gray_white_cal", &Easy_Menu_Ui_Data.gray_white_cal, Gray_White_Cal_Callback);
-    Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
-    Show_Item_Init(PAGE(Gray), ITEM(gray__12__item), "gray__12__item", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray__12__item__data, 100, Gray__12__Item_Callback);
+    // CH1-CH4 显示4路数字传感器状态（0=黑线，1=白底）
+    Show_Item_Init(PAGE(Gray), ITEM(CH1), "PA15", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH1_data, 10, Gray_Digital_Callback);
+    Show_Item_Init(PAGE(Gray), ITEM(CH2), "PA16", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH2_data, 10, Gray_Digital_Callback);
+    Show_Item_Init(PAGE(Gray), ITEM(CH3), "PA17", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH3_data, 10, Gray_Digital_Callback);
+    Show_Item_Init(PAGE(Gray), ITEM(CH4), "PA27", UNSIGNED_SHORT_INT, &Easy_Menu_Ui_Data.CH4_data, 10, Gray_Digital_Callback);
+    // 旧的8路模拟传感器菜单项已移除
+    // Switch_Item_Init(PAGE(Gray), ITEM(gray_white_cal), "gray_white_cal", &Easy_Menu_Ui_Data.gray_white_cal, Gray_White_Cal_Callback);
+    // Switch_Item_Init(PAGE(Gray), ITEM(gray_black_cal), "gray_black_cal", &Easy_Menu_Ui_Data.gray_black_cal, Gray_Black_Cal_Callback);
+    // Show_Item_Init(PAGE(Gray), ITEM(gray__12__item), "gray__12__item", UNSIGNED_CHAR, &Easy_Menu_Ui_Data.gray__12__item__data, 100, Gray__12__Item_Callback);
 
     Ordinary_Page_Init(PAGE(main_page), PAGE(encoder), "encoder", encoder_items, 6);
     Show_Item_Init(PAGE(encoder), ITEM(show_speedA), "speedA", FLOAT, &Easy_Menu_Ui_Data.speedA, 10, Show_Speeda_Callback);

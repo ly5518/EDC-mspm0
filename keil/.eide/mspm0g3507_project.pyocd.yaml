@@ -1,2 +1,15 @@
-pack:
-  - .eide/packs/mspm0g3507.pack.zip
+# pyOCD config for MSPM0G3507
+
+target: mspm0g3507
+
+probe:
+  unique_id: "134244834514"
+
+flash:
+  base_address: 0x00000000
+
+connect:
+  speed: 4000000
+
+debug:
+  swd: true

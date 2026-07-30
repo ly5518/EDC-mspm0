@@ -36,7 +36,11 @@ int16_t target_line  = 0;
 
 /* ============ 循迹状态 ============ */
 int16_t line_pos = 0;
-static const int8_t line_weight[8] = {-40, -25, -15, -5, 5, 15, 25, 40};
+// 旧的8路权重数组，已注释
+// static const int8_t line_weight[8] = {-40, -25, -15, -5, 5, 15, 25, 40};
+
+// 新的4路权重数组（PA15, PA16, PA17, PA27）
+static const int8_t line_weight[4] = {-30, -10, 10, 30};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
@@ -108,12 +112,15 @@ void Motor_PID_Sync(void)
 
 void Line_CalcPosition(void)
 {
-    extern char gray_digital_str[9];
+    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
     int32_t sum = 0;
     uint8_t count = 0;
-    for (int i = 0; i < 8; i++)
+
+    // 遍历4路传感器（PA15, PA16, PA17, PA27）
+    // 检测到白底='1'，检测到黑线='0'
+    for (int i = 0; i < 4; i++)
     {
-        if (gray_digital_str[i] == '1')
+        if (gray_digital_str[i] == '1')  // 白底
         {
             sum += line_weight[i];
             count++;
@@ -291,7 +298,7 @@ static uint8_t lf_lap_count = 0;     // 已完成圈数
 
 void Task_LineSquare(void)
 {
-    extern char gray_digital_str[9];
+    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
 
     if (lf_state == LF_FOLLOW)
     {
@@ -302,6 +309,7 @@ void Task_LineSquare(void)
         target_line = 0;
         PID_Calc();
 
+        // 检测到全部黑线（4路都是'0'）→ 开始转弯
         if (gray_digital_str[0] == '0' && gray_digital_str[1] == '0' &&
             gray_digital_str[2] == '0' && gray_digital_str[3] == '0')
         {
@@ -327,8 +335,9 @@ void Task_LineSquare(void)
         if (turned > 180.0f)  turned -= 360.0f;
         if (turned < -180.0f) turned += 360.0f;
 
+        // 检测是否有任何一路检测到黑线（'0'）
         uint8_t line_found = 0;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 4; i++)
             if (gray_digital_str[i] == '0') { line_found = 1; break; }
 
         if (fabs(turned) >= 55.0f && line_found)
@@ -426,7 +435,7 @@ void Task1_start(void)
 
 void Task1(void)
 {
-    extern char gray_digital_str[9];
+    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
     /* 更新累计航向角（处理 ±180° 跳变） */
@@ -436,9 +445,9 @@ void Task1(void)
     yaw_total += delta;
     yaw_last = yaw_angle;
 
-    /* 统计黑传感器数量 */
+    /* 统计黑传感器数量（4路） */
     uint8_t black_cnt = 0;
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 4; i++)
         if (gray_digital_str[i] == '0') black_cnt++;
 
     switch (lr_state)
@@ -576,7 +585,7 @@ void Task4_start(void)
 
 void Task4(void)
 {
-    extern char gray_digital_str[9];
+    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
     /* 更新累计航向角 */
@@ -586,8 +595,9 @@ void Task4(void)
     lr4_yaw_total += delta;
     lr4_yaw_last = yaw_angle;
 
+    /* 统计黑传感器数量（4路） */
     uint8_t black_cnt = 0;
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 4; i++)
         if (gray_digital_str[i] == '0') black_cnt++;
 
     switch (lr4_state)

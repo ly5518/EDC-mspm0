@@ -63,7 +63,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_UART_0_init();
     SYSCFG_DL_UART_ppr_init();
     SYSCFG_DL_SPI_LCD_init();
-    SYSCFG_DL_ADC12_0_init();
     SYSCFG_DL_DMA_init();
     SYSCFG_DL_SYSTICK_init();
     /* Ensure backup structures have no valid state */
@@ -116,7 +115,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_UART_Main_reset(UART_0_INST);
     DL_UART_Main_reset(UART_ppr_INST);
     DL_SPI_reset(SPI_LCD_INST);
-    DL_ADC12_reset(ADC12_0_INST);
 
 
 
@@ -130,7 +128,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_UART_Main_enablePower(UART_0_INST);
     DL_UART_Main_enablePower(UART_ppr_INST);
     DL_SPI_enablePower(SPI_LCD_INST);
-    DL_ADC12_enablePower(ADC12_0_INST);
 
 
     delay_cycles(POWER_STARTUP_DELAY);
@@ -208,25 +205,29 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 
     DL_GPIO_initDigitalOutput(LCD_BLK_IOMUX);
 
-    DL_GPIO_initDigitalOutput(Gray_Address_PIN_0_IOMUX);
+    DL_GPIO_initDigitalInputFeatures(Gray_Address_PIN_0_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 
-    DL_GPIO_initDigitalOutput(Gray_Address_PIN_1_IOMUX);
+    DL_GPIO_initDigitalInputFeatures(Gray_Address_PIN_1_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 
-    DL_GPIO_initDigitalOutput(Gray_Address_PIN_2_IOMUX);
+    DL_GPIO_initDigitalInputFeatures(Gray_Address_PIN_2_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+
+    DL_GPIO_initDigitalInputFeatures(Gray_Address_PIN_3_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 
     DL_GPIO_initDigitalOutput(IIC_Software_SDA_IOMUX);
 
     DL_GPIO_initDigitalOutput(IIC_Software_SCL_IOMUX);
 
-    DL_GPIO_clearPins(GPIOA, Gray_Address_PIN_0_PIN |
-		Gray_Address_PIN_1_PIN |
-		Gray_Address_PIN_2_PIN);
     DL_GPIO_setPins(GPIOA, IIC_Software_SDA_PIN |
 		IIC_Software_SCL_PIN);
-    DL_GPIO_enableOutput(GPIOA, Gray_Address_PIN_0_PIN |
-		Gray_Address_PIN_1_PIN |
-		Gray_Address_PIN_2_PIN |
-		IIC_Software_SDA_PIN |
+    DL_GPIO_enableOutput(GPIOA, IIC_Software_SDA_PIN |
 		IIC_Software_SCL_PIN);
     DL_GPIO_setUpperPinsPolarity(GPIOA, DL_GPIO_PIN_25_EDGE_RISE_FALL);
     DL_GPIO_clearInterruptStatus(GPIOA, ENCODER1_DIR_PIN_ENCODER1_PIN);
@@ -315,9 +316,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_PWM_0_init(void) {
     DL_TimerA_initPWMMode(
         PWM_0_INST, (DL_TimerA_PWMConfig *) &gPWM_0Config);
 
-    // Set Counter control to the smallest CC index being used
-    DL_TimerA_setCounterControl(PWM_0_INST,DL_TIMER_CZC_CCCTL0_ZCOND,DL_TIMER_CAC_CCCTL0_ACOND,DL_TIMER_CLC_CCCTL0_LCOND);
-
     DL_TimerA_setCaptureCompareOutCtl(PWM_0_INST, DL_TIMER_CC_OCTL_INIT_VAL_LOW,
 		DL_TIMER_CC_OCTL_INV_OUT_DISABLED, DL_TIMER_CC_OCTL_SRC_FUNCVAL,
 		DL_TIMERA_CAPTURE_COMPARE_0_INDEX);
@@ -365,9 +363,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_PWM_1_init(void) {
 
     DL_TimerA_initPWMMode(
         PWM_1_INST, (DL_TimerA_PWMConfig *) &gPWM_1Config);
-
-    // Set Counter control to the smallest CC index being used
-    DL_TimerA_setCounterControl(PWM_1_INST,DL_TIMER_CZC_CCCTL0_ZCOND,DL_TIMER_CAC_CCCTL0_ACOND,DL_TIMER_CLC_CCCTL0_LCOND);
 
     DL_TimerA_setCaptureCompareOutCtl(PWM_1_INST, DL_TIMER_CC_OCTL_INIT_VAL_LOW,
 		DL_TIMER_CC_OCTL_INV_OUT_DISABLED, DL_TIMER_CC_OCTL_SRC_FUNCVAL,
@@ -502,6 +497,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_TIMER_1_init(void) {
 }
 
 
+
 static const DL_UART_Main_ClockConfig gUART_0ClockConfig = {
     .clockSel    = DL_UART_MAIN_CLOCK_MFCLK,
     .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
@@ -537,6 +533,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_UART_0_init(void)
 
     DL_UART_Main_enable(UART_0_INST);
 }
+
 static const DL_UART_Main_ClockConfig gUART_pprClockConfig = {
     .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
     .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
@@ -605,25 +602,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_SPI_LCD_init(void) {
 
     /* Enable module */
     DL_SPI_enable(SPI_LCD_INST);
-}
-
-/* ADC12_0 Initialization */
-static const DL_ADC12_ClockConfig gADC12_0ClockConfig = {
-    .clockSel       = DL_ADC12_CLOCK_ULPCLK,
-    .divideRatio    = DL_ADC12_CLOCK_DIVIDE_8,
-    .freqRange      = DL_ADC12_CLOCK_FREQ_RANGE_32_TO_40,
-};
-SYSCONFIG_WEAK void SYSCFG_DL_ADC12_0_init(void)
-{
-    DL_ADC12_setClockConfig(ADC12_0_INST, (DL_ADC12_ClockConfig *) &gADC12_0ClockConfig);
-    DL_ADC12_initSingleSample(ADC12_0_INST,
-        DL_ADC12_REPEAT_MODE_ENABLED, DL_ADC12_SAMPLING_SOURCE_AUTO, DL_ADC12_TRIG_SRC_SOFTWARE,
-        DL_ADC12_SAMP_CONV_RES_12_BIT, DL_ADC12_SAMP_CONV_DATA_FORMAT_UNSIGNED);
-    DL_ADC12_configConversionMem(ADC12_0_INST, ADC12_0_ADCMEM_ADC_CH0,
-        DL_ADC12_INPUT_CHAN_0, DL_ADC12_REFERENCE_VOLTAGE_VDDA, DL_ADC12_SAMPLE_TIMER_SOURCE_SCOMP0, DL_ADC12_AVERAGING_MODE_DISABLED,
-        DL_ADC12_BURN_OUT_SOURCE_DISABLED, DL_ADC12_TRIGGER_MODE_AUTO_NEXT, DL_ADC12_WINDOWS_COMP_MODE_DISABLED);
-    DL_ADC12_setSampleTime0(ADC12_0_INST,10);
-    DL_ADC12_enableConversions(ADC12_0_INST);
 }
 
 SYSCONFIG_WEAK void SYSCFG_DL_DMA_init(void){

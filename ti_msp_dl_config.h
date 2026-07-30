@@ -203,18 +203,6 @@ extern "C" {
 
 
 
-/* Defines for ADC12_0 */
-#define ADC12_0_INST                                                        ADC0
-#define ADC12_0_INST_IRQHandler                                  ADC0_IRQHandler
-#define ADC12_0_INST_INT_IRQN                                    (ADC0_INT_IRQn)
-#define ADC12_0_ADCMEM_ADC_CH0                                DL_ADC12_MEM_IDX_0
-#define ADC12_0_ADCMEM_ADC_CH0_REF               DL_ADC12_REFERENCE_VOLTAGE_VDDA
-#define ADC12_0_ADCMEM_ADC_CH0_REF_VOLTAGE_V                                     3.3
-#define GPIO_ADC12_0_C0_PORT                                               GPIOA
-#define GPIO_ADC12_0_C0_PIN                                       DL_GPIO_PIN_27
-
-
-
 
 
 /* Port definition for Pin Group LED */
@@ -293,6 +281,9 @@ extern "C" {
 /* Defines for PIN_2: GPIOA.15 with pinCMx 37 on package pin 8 */
 #define Gray_Address_PIN_2_PIN                                  (DL_GPIO_PIN_15)
 #define Gray_Address_PIN_2_IOMUX                                 (IOMUX_PINCM37)
+/* Defines for PIN_3: GPIOA.27 with pinCMx 60 on package pin 31 */
+#define Gray_Address_PIN_3_PIN                                  (DL_GPIO_PIN_27)
+#define Gray_Address_PIN_3_IOMUX                                 (IOMUX_PINCM60)
 /* Port definition for Pin Group IIC_Software */
 #define IIC_Software_PORT                                                (GPIOA)
 
@@ -319,7 +310,6 @@ void SYSCFG_DL_TIMER_1_init(void);
 void SYSCFG_DL_UART_0_init(void);
 void SYSCFG_DL_UART_ppr_init(void);
 void SYSCFG_DL_SPI_LCD_init(void);
-void SYSCFG_DL_ADC12_0_init(void);
 void SYSCFG_DL_DMA_init(void);
 
 void SYSCFG_DL_SYSTICK_init(void);
