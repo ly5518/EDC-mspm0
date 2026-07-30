@@ -19,6 +19,7 @@ virtualFolder:
         - path: ../board.c
         - path: ../basic_read_reg.c
         - path: ../task.c
+        - path: ../sysctl_init.c
       folders: []
     - name: Driverlib
       files:

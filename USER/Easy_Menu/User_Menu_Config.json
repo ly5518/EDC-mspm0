@@ -926,26 +926,92 @@
         ]
       },
       {
-        "name": "SG90",
+        "name": "TASK",
         "type": "普通页面",
         "properties": {
           "以父级作为前缀": false,
-          "变量名": "SG90"
+          "变量名": "TASK"
         },
         "children": [
           {
-            "name": "angle",
-            "type": "数据条目",
+            "name": "tim_s",
+            "type": "展示条目",
             "properties": {
               "以父级作为前缀": false,
               "初始值": "0",
-              "变量名": "sg90_angle",
-              "变量类型": "uint32_val",
+              "变量名": "tim_s",
+              "变量类型": "uint8_val",
+              "周期": "100",
               "回调函数": true,
-              "数据变量名": "angle",
-              "最大值": "180",
-              "最小值": "0",
-              "步进": "5"
+              "数据变量名": "tim_s"
+            }
+          },
+          {
+            "name": "tim_ms",
+            "type": "展示条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "tim_ms",
+              "变量类型": "uint8_val",
+              "周期": "100",
+              "回调函数": true,
+              "数据变量名": "tim_ms"
+            }
+          },
+          {
+            "name": "task1",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "task__1__item",
+              "回调函数": true,
+              "数据变量名": "task1_flag"
+            }
+          },
+          {
+            "name": "task2",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "task__3__item",
+              "回调函数": true,
+              "数据变量名": "task2_flag"
+            }
+          },
+          {
+            "name": "task3",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "task__4__item",
+              "回调函数": true,
+              "数据变量名": "task3_flag"
+            }
+          },
+          {
+            "name": "task4",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "task__5__item",
+              "回调函数": true,
+              "数据变量名": "task4_flag"
+            }
+          },
+          {
+            "name": "task5",
+            "type": "开关条目",
+            "properties": {
+              "以父级作为前缀": false,
+              "初始值": "0",
+              "变量名": "task__6__item",
+              "回调函数": true,
+              "数据变量名": "task5_flag"
             }
           }
         ]

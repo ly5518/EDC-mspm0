@@ -36,6 +36,7 @@
 #if (DeviceFamily_PARENT == DeviceFamily_PARENT_MSPM0G1X0X_G3X0X)
 
 #include <ti/driverlib/m0p/dl_core.h>
+#include <ti/driverlib/m0p/dl_factoryregion.h>
 #include <ti/driverlib/m0p/sysctl/dl_sysctl_mspm0g1x0x_g3x0x.h>
 
 void DL_SYSCTL_configSYSPLL(DL_SYSCTL_SYSPLLConfig *config)

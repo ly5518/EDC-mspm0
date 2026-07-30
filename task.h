@@ -15,7 +15,11 @@ typedef enum {
     TASK_SQUARE,
     TASK_LINE_SQUARE,
     TASK_LEFT_TURN,
-    TASK_POSITION_TRACK,
+    TASK_1,       
+    TASK_2,       
+    TASK_3,       
+    TASK_4,       
+    TASK_5,       
 } TaskMode_t;
 
 /* ============ 任务节点 ============ */
@@ -65,11 +69,32 @@ void Task_Line_Start(void);
 void Task_LineSquare(void);
 void Task_LeftTurn(void);
 void Task_LeftTurn_Start(void);
-void Task_PosTrack_Start(void);
-void Task_PosTrack(void);
-void Task_PosTrack_SetErr(int16_t x);
 /* ============ 菜单触发标志 ============ */
 extern volatile uint8_t leftturn_flag;
-extern volatile uint8_t postrack_flag;
+extern volatile uint8_t task1_flag;
+extern volatile uint8_t task2_flag;
+extern volatile uint8_t task3_flag;
+extern volatile uint8_t task4_flag;
+extern volatile uint8_t task5_flag;
+
+/* ============ 任务一函数 ============ */
+void Task1_start(void);
+void Task1(void);
+void Task2_start(void);
+void Task2(void);
+void Task3_start(void);
+void Task3(void);
+void Task4_start(void);
+void Task4(void);
+void Task5_start(void);
+void Task5(void);
+
+/* ============ 任务计时器 ============ */
+extern volatile uint32_t task_elapsed_ms;    // 任务已运行毫秒数
+extern volatile uint8_t  task_timer_running; // 计时器是否在跑
+extern uint32_t menu_count;                  // 来自 empty.c，1ms 递增
+
+void Task_Timer_Start(void);
+void Task_Timer_Stop(void);
 
 #endif

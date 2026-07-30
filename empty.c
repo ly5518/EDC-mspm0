@@ -10,8 +10,7 @@
 #include "Gray.h"
 #include "Easy_Menu.h"
 #include "Key.h"
-#include "bsp_sg90.h"
-#include "USER/BlueSerial/blueserial.h"
+
 
 void TimeA1_Init(void);
 static void LCD_Display_Char(unsigned short int x, unsigned short int y, char ch, unsigned char reverse_flag);
@@ -24,7 +23,12 @@ volatile uint32_t count = 0;
 volatile uint8_t square_flag = 0;      // 菜单触发正方形任务
 volatile uint8_t line_square_flag = 0; // 菜单触发循迹正方形任务
 volatile uint8_t leftturn_flag = 0;  // 菜单触发原地左转
-static uint32_t menu_count = 0;
+extern volatile uint8_t task1_flag; 
+extern volatile uint8_t task2_flag; 
+extern volatile uint8_t task3_flag;
+extern volatile uint8_t task4_flag;
+extern volatile uint8_t task5_flag;
+uint32_t menu_count = 0;
 volatile uint8_t _1ms_flag = 0;
 volatile uint8_t _5ms_flag = 0;
 volatile uint8_t _10ms_flag = 0;
@@ -159,11 +163,9 @@ int main(void)
 
     board_init();
     delay_ms(100);
-
     IMU_init();
     TimeA1_Init();
     LCD_init();
-    Set_Servo_Angle(0);
     LCD_set_color(LCD_DEFAULT_PENCOLOR, LCD_DEFAULT_BGCOLOR);
 
     // 初始化 Easy_Menu，绑定 LCD 显示回调（字体 6x8，与 Easy_Menu CHAR_WIDTH=6, CHAR_HEIGHT=8 匹配）
@@ -174,7 +176,6 @@ int main(void)
 
     Motor_Init();
     Encoder_Init();
-    BlueSerial_Init();
 
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -182,8 +183,6 @@ int main(void)
 
     No_MCU_Ganv_Sensor_Init_Frist(&gray_sensor); // 灰度传感器首次初始化
     delay_ms(20);
-
-
 
     while (1)
     {
@@ -232,50 +231,49 @@ int main(void)
             Line_CalcPosition();   // 循迹线位置（每10ms更新）
             Task_Run();            // 任务调度（非阻塞）
 
-            // 每100ms：蓝牙发送yaw
-            {
-                static uint8_t bt_cnt = 0;
-                if (++bt_cnt >= 10) { bt_cnt = 0;
-                    BlueSerial_SendYaw(yaw_angle);
-                }
-            }
         }
 
         // 菜单触发任务（互斥：启动新任务自动停掉旧任务）
         if (square_flag)
         {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0;  task1_flag = 0;
             Task_Square_Start();
         }
         else if (line_square_flag)
         {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0;
             Task_Line_Start();
         }
         else if (leftturn_flag)
         {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
+            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; 
             Task_LeftTurn_Start();
         }
-        else if (postrack_flag)
+        else if (task1_flag)
         {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; postrack_flag = 0;
-            Task_PosTrack_Start();
+            task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
+            Task1_start();
         }
-
-        // 蓝牙解析 [ERR,x,y] → 位置追踪（仅在位置追踪任务运行时处理）
-        if (BlueSerial_HasErr())
+        else if (task2_flag)
         {
-            int16_t err_x = BlueSerial_GetErrX();
-            int16_t err_y = BlueSerial_GetErrY();
-            printf("[BT] raw:\"%s\" | err_x=%d, err_y=%d\r\n",
-                   BlueSerial_GetRaw(), err_x, err_y);
-            BlueSerial_ClearErr();
-
-            if (task_mode == TASK_POSITION_TRACK)
-                Task_PosTrack_SetErr(err_x);
+            task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
+            Task2_start();
         }
-
+        else if (task3_flag)
+        {
+           task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
+            Task3_start();
+        }
+        else if (task4_flag)
+        {
+            task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
+            Task4_start();
+        }
+        else if (task5_flag)
+        {
+            task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
+            Task5_start();
+        }
         // 每 100ms 采集灰度并打印模拟量
         if (print_flag)
         {
@@ -346,13 +344,13 @@ void GROUP1_IRQHandler(void)
 {
     // ---- GPIOA: NRF24L01 IRQ ----
     uint32_t statusA = DL_GPIO_getEnabledInterruptStatus(GPIOA,
-        ENCODER1_DIR_PIN_ENCODER1_PIN | NRF24L01_IRQ_PIN);
+        ENCODER1_DIR_PIN_ENCODER1_PIN);
 
     // 编码器方向引脚中断：只清状态，不处理（方向由PWM决定）
     if (statusA & ENCODER1_DIR_PIN_ENCODER1_PIN)
         DL_GPIO_clearInterruptStatus(GPIOA, ENCODER1_DIR_PIN_ENCODER1_PIN);
-    if (statusA & NRF24L01_IRQ_PIN)
-        DL_GPIO_clearInterruptStatus(GPIOA, NRF24L01_IRQ_PIN);
+//    if (statusA & NRF24L01_IRQ_PIN)
+//        DL_GPIO_clearInterruptStatus(GPIOA, NRF24L01_IRQ_PIN);
 
     // ---- GPIOB: 按键 ----
     uint32_t statusB = DL_GPIO_getEnabledInterruptStatus(GPIOB,
@@ -369,7 +367,8 @@ void TimeA1_Init(void)
     // 设置中断优先级：Timer=0(最高), GPIO=1(较低)
     // 确保编码器采样ISR不被GPIO中断打断，消除竞态条件
     NVIC_SetPriority(TIMER_1_INST_INT_IRQN, 0);
-    NVIC_SetPriority(GPIO_MULTIPLE_GPIOA_INT_IRQN, 1);
+//    NVIC_SetPriority(GPIO_MULTIPLE_GPIOA_INT_IRQN, 1);
+		NVIC_SetPriority(GPIOA_INT_IRQn, 1);
     NVIC_SetPriority(GPIO_MULTIPLE_GPIOB_INT_IRQN, 1);
 
     NVIC_ClearPendingIRQ(TIMER_1_INST_INT_IRQN);

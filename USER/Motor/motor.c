@@ -15,7 +15,7 @@ void Motor_Init(void)
 
 void Set_PWM(int pwmL, int pwmR)
 {
-	Encoder_SetPwmDir(-pwmL, -pwmR);
+	Encoder_SetPwmDir(pwmL, pwmR);
 
 	pwmR = -pwmR;
 

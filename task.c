@@ -6,7 +6,7 @@
 #include "task.h"
 #include <math.h>
 #include <stdio.h>
-
+#include "board.h"
 extern float yaw_angle;
 
 /* ============ PID 实例 ============ */
@@ -36,7 +36,7 @@ int16_t target_line  = 0;
 
 /* ============ 循迹状态 ============ */
 int16_t line_pos = 0;
-static const int8_t line_weight[8] = {-60, -40, -20, -8, 8, 20, 40, 60};
+static const int8_t line_weight[8] = {-40, -25, -15, -5, 5, 15, 25, 40};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
@@ -56,6 +56,28 @@ static float sq_straight_yaw = 0;
 static uint8_t straight_init = 0;
 uint8_t sq_cycle_count = 0;
 volatile uint8_t postrack_flag = 0;
+volatile uint8_t task1_flag = 0;
+volatile uint8_t task2_flag = 0;
+volatile uint8_t task3_flag = 0;
+volatile uint8_t task4_flag = 0;
+volatile uint8_t task5_flag = 0;
+
+/* ============ 任务计时器 ============ */
+volatile uint32_t task_elapsed_ms = 0;
+volatile uint8_t  task_timer_running = 0;
+static uint32_t task_start_tick = 0;
+
+void Task_Timer_Start(void)
+{
+    task_start_tick = menu_count;
+    task_elapsed_ms = 0;
+    task_timer_running = 1;
+}
+
+void Task_Timer_Stop(void)
+{
+    task_timer_running = 0;
+}
 
 /* ============ 循迹正方形参数 ============ */
 uint8_t ls_lap_target = 1;       // 目标圈数
@@ -125,8 +147,8 @@ static void PID_Calc(void)
     int pwm = (int)pid_speed.Out;
     int steer = -(int)pid_steer.Out;
     int line = (int)pid_line.Out;
-    int LeftPWM  = -(pwm - steer + line);
-    int RightPWM = -(pwm + steer - line);
+    int LeftPWM  = (pwm - steer + line);
+    int RightPWM = (pwm + steer - line);
     LeftPWM  = (LeftPWM  > PWM_MAX) ? PWM_MAX : (LeftPWM  < PWM_MIN ? PWM_MIN : LeftPWM);
     RightPWM = (RightPWM > PWM_MAX) ? PWM_MAX : (RightPWM < PWM_MIN ? PWM_MIN : RightPWM);
     Set_PWM(LeftPWM, RightPWM);
@@ -135,10 +157,15 @@ static void PID_Calc(void)
 /* ============ 任务调度 ============ */
 void Task_Run(void)
 {
+    /* 更新任务计时器 */
+    if (task_timer_running)
+        task_elapsed_ms = menu_count - task_start_tick;
+
     switch (task_mode)
     {
     case TASK_IDLE:
         Set_PWM(0, 0);
+        Task_Timer_Stop();
         break;
     case TASK_SQUARE:
         Task_Square();
@@ -149,9 +176,21 @@ void Task_Run(void)
     case TASK_LEFT_TURN:
         Task_LeftTurn();
         break;
-    case TASK_POSITION_TRACK:
-        Task_PosTrack();
-        break;
+        case TASK_1:
+            Task1();
+            break;
+        case TASK_2: 
+            Task2();
+            break;
+        case TASK_3:
+            Task3();
+            break;
+        case TASK_4:
+            Task4();
+            break;
+        case TASK_5:
+            Task5();
+            break;
     }
 }
 
@@ -338,52 +377,274 @@ void Task_LeftTurn(void)
 }
 
 /* ================================================================ */
-/*                  任务4：蓝牙位置追踪                               */
+/*           摆杆通信                                                */
 /* ================================================================ */
 
-#define POS_TRACK_BASE_SPEED  300
-
-static int16_t pos_track_err_x = 0;
-
-void Task_PosTrack_SetErr(int16_t x)
+void Pendulum_SendCmd(uint8_t cmd)
 {
-    pos_track_err_x = x;
+    DL_UART_transmitData(UART_ppr_INST, cmd);
+    while (DL_UART_isBusy(UART_ppr_INST));
 }
 
-void Task_PosTrack_Start(void)
+/* ================================================================ */
+/*           任务一：循迹跑一圈（A点启停线检测）                        */
+/* ================================================================ */
+
+#define LAP_RUN_SPEED        1000     // 循迹速度
+#define LAP_START_DEBOUNCE_DIST 300.0f  // 起点消抖：走 300mm 后才进入循迹
+#define LAP_SLOW_DOWN_DIST   5500.0f  // 距离到了 5.5 米 → 可能减速（需 IMU 确认）
+#define LAP_SLOW_DOWN_YAW    320.0f   // 累计角度 > 320° → 确认快走完一圈
+#define LAP_STOP_BLACK_CNT   3        // ≥3 个传感器检测到黑 → 启停线
+#define LAP_STOP_DELAY_MM    25.0f    // 检测到启停线后再走 25mm 停车
+#define LAP_FALLBACK_DIST    6500.0f  // 兜底距离
+
+typedef enum {
+    LR_COOLDOWN,    // 起点消抖阶段
+    LR_FOLLOW,      // 循迹行驶
+    LR_SLOW_DOWN,   // 减速循迹
+    LR_STOP_DELAY,  // 检测到启停线，再走一段
+    LR_STOP         // 停车
+} LapRunState_t;
+
+static LapRunState_t lr_state = LR_COOLDOWN;
+static float lr_stop_start_dist = 0;   // 检测到启停线时的距离
+static float yaw_total = 0;           // 累计航向角（0°→360°）
+static float yaw_last = 0;            // 上一次 yaw
+
+void Task1_start(void)
 {
+    task_mode = TASK_1;
     Task_Init();
-    task_mode = TASK_POSITION_TRACK;
-    pos_track_err_x = 0;
     pid_speed.Enabled = 1;
-    pid_steer.Enabled = 1;
-    pid_line.Enabled = 0;
-    PID_Clear(&pid_speed);
-    PID_Clear(&pid_steer);
-    target_speed = POS_TRACK_BASE_SPEED;
+    pid_line.Enabled  = 1;
+    pid_steer.Enabled = 0;
+    lr_state = LR_COOLDOWN;
+    lr_stop_start_dist = 0;
+    yaw_total = 0;
+    yaw_last = yaw_angle;
 }
 
-void Task_PosTrack(void)
+void Task1(void)
 {
-    /* 速度环 */
-    float ave_speed = ((float)speedA + (float)speedB) / 2.0f;
-    PID_SetTarget(&pid_speed, (float)target_speed);
-    PID_Update(&pid_speed, ave_speed);
+    extern char gray_digital_str[9];
+    CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
-    /* 转向环：目标=0（居中），当前=偏差x */
-    PID_SetTarget(&pid_steer, 0.0f);
-    PID_Update(&pid_steer, (float)pos_track_err_x);
+    /* 更新累计航向角（处理 ±180° 跳变） */
+    float delta = yaw_angle - yaw_last;
+    if (delta > 180.0f)  delta -= 360.0f;
+    if (delta < -180.0f) delta += 360.0f;
+    yaw_total += delta;
+    yaw_last = yaw_angle;
 
-    int pwm   = (int)pid_speed.Out;
-    int steer = (int)pid_steer.Out;
+    /* 统计黑传感器数量 */
+    uint8_t black_cnt = 0;
+    for (int i = 0; i < 8; i++)
+        if (gray_digital_str[i] == '0') black_cnt++;
 
-    int left  = pwm - steer;  // err_x>0(目标在左) → 左轮慢 → 左转
-    int right = pwm + steer;
+    switch (lr_state)
+    {
+    /* ---- 起点消抖：走 300mm 后进入循迹 ---- */
+    case LR_COOLDOWN:
+    {
+        target_speed = LAP_RUN_SPEED;
+        target_line  = 0;
+        PID_Calc();
 
-    if (left > PWM_MAX) left = PWM_MAX;
-    if (left < PWM_MIN) left = PWM_MIN;
-    if (right > PWM_MAX) right = PWM_MAX;
-    if (right < PWM_MIN) right = PWM_MIN;
+        if (CurrentDistance >= LAP_START_DEBOUNCE_DIST)
+            lr_state = LR_FOLLOW;
+        break;
+    }
 
-    Set_PWM(left, right);
+    /* ---- 正常循迹：距离 + 角度双重确认 ---- */
+    case LR_FOLLOW:
+    {
+        target_speed = LAP_RUN_SPEED;
+        target_line  = 0;
+        PID_Calc();
+
+        /* 距离到了 3.5 米 且 角度 > 320° → 进入最后一个弯，减速 */
+        if (CurrentDistance >= LAP_SLOW_DOWN_DIST && yaw_total >= LAP_SLOW_DOWN_YAW)
+            lr_state = LR_SLOW_DOWN;
+        break;
+    }
+
+    /* ---- 减速循迹：检测启停线 ---- */
+    case LR_SLOW_DOWN:
+    {
+        target_speed = LAP_RUN_SPEED / 3;
+        target_line  = 0;
+        PID_Calc();
+
+        /* 检测到启停线 */
+        if (black_cnt >= LAP_STOP_BLACK_CNT)
+        {
+            lr_stop_start_dist = CurrentDistance;
+            lr_state = LR_STOP_DELAY;
+        }
+
+        /* 兜底 */
+        if (CurrentDistance >= LAP_FALLBACK_DIST)
+            lr_state = LR_STOP;
+        break;
+    }
+
+    /* ---- 停车补偿：再走 25mm ---- */
+    case LR_STOP_DELAY:
+    {
+        target_speed = LAP_RUN_SPEED / 3;
+        target_line  = 0;
+        PID_Calc();
+
+        if (CurrentDistance - lr_stop_start_dist >= LAP_STOP_DELAY_MM)
+            lr_state = LR_STOP;
+        break;
+    }
+
+    /* ---- 停车 ---- */
+    case LR_STOP:
+        Set_PWM(0, 0);
+        task_mode = TASK_IDLE;
+        Task_Timer_Stop();
+        break;
+    }
+}
+void Task2_start(void)
+{
+    Pendulum_SendCmd(0x01);  // 通知摆杆：任务3（球从O到±5cm）
+    task_mode = TASK_2;
+    Task_Init();
+}
+void Task2(void)
+{
+    Set_PWM(1000, -1000);
+}
+/* ================================================================ */
+/*           任务三：AB段循迹（1.5米，≤8秒）                         */
+/* ================================================================ */
+
+#define TASK3_SPEED     400      // 循迹速度
+#define TASK3_TARGET_MM 1600.0f  // AB 距离 1.5 米
+
+void Task3_start(void)
+{
+    Pendulum_SendCmd(0x02);  // 通知摆杆：任务4（球稳定在O，A→B）
+    task_mode = TASK_3;
+    Task_Init();
+    pid_speed.Enabled = 1;
+    pid_line.Enabled  = 1;
+    pid_steer.Enabled = 0;
+}
+
+void Task3(void)
+{
+    CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
+
+    target_speed = TASK3_SPEED;
+    target_line  = 0;
+    PID_Calc();
+
+    /* 走够 1.5 米 → 停车 */
+    if (CurrentDistance >= TASK3_TARGET_MM)
+    {
+        Set_PWM(0, 0);
+        task_mode = TASK_IDLE;
+        Task_Timer_Stop();
+    }
+}
+/* ================================================================ */
+/*      任务四/五：循迹跑一圈经过A点（≤30秒，不要求精确停车）        */
+/* ================================================================ */
+
+/* 复用任务一的状态机，去掉 STOP_DELAY */
+#define LAP45_RUN_SPEED  600      // 任务四五循迹速度（比任务一慢）
+static float lr4_yaw_total = 0;
+static float lr4_yaw_last = 0;
+static LapRunState_t lr4_state = LR_COOLDOWN;
+
+void Task4_start(void)
+{
+    Pendulum_SendCmd(0x03);  // 通知摆杆：任务5（球稳定在O，跑一圈）
+    task_mode = TASK_4;
+    Task_Init();
+    pid_speed.Enabled = 1;
+    pid_line.Enabled  = 1;
+    pid_steer.Enabled = 0;
+    lr4_state = LR_COOLDOWN;
+    lr4_yaw_total = 0;
+    lr4_yaw_last = yaw_angle;
+}
+
+void Task4(void)
+{
+    extern char gray_digital_str[9];
+    CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
+
+    /* 更新累计航向角 */
+    float delta = yaw_angle - lr4_yaw_last;
+    if (delta > 180.0f)  delta -= 360.0f;
+    if (delta < -180.0f) delta += 360.0f;
+    lr4_yaw_total += delta;
+    lr4_yaw_last = yaw_angle;
+
+    uint8_t black_cnt = 0;
+    for (int i = 0; i < 8; i++)
+        if (gray_digital_str[i] == '0') black_cnt++;
+
+    switch (lr4_state)
+    {
+    case LR_COOLDOWN:
+    {
+        target_speed = LAP45_RUN_SPEED;
+        target_line  = 0;
+        PID_Calc();
+        if (CurrentDistance >= LAP_START_DEBOUNCE_DIST)
+            lr4_state = LR_FOLLOW;
+        break;
+    }
+    case LR_FOLLOW:
+    {
+        target_speed = LAP45_RUN_SPEED;
+        target_line  = 0;
+        PID_Calc();
+        if (CurrentDistance >= LAP_SLOW_DOWN_DIST && lr4_yaw_total >= LAP_SLOW_DOWN_YAW)
+            lr4_state = LR_SLOW_DOWN;
+        break;
+    }
+    case LR_SLOW_DOWN:
+    {
+        target_speed = LAP45_RUN_SPEED / 3;
+        target_line  = 0;
+        PID_Calc();
+        if (black_cnt >= LAP_STOP_BLACK_CNT)
+            lr4_state = LR_STOP;
+        if (CurrentDistance >= LAP_FALLBACK_DIST)
+            lr4_state = LR_STOP;
+        break;
+    }
+    case LR_STOP:
+        Set_PWM(0, 0);
+        task_mode = TASK_IDLE;
+        Task_Timer_Stop();
+        break;
+    default:
+        break;
+    }
+}
+
+/* 任务五：跟任务四完全一样 */
+void Task5_start(void)
+{
+    Pendulum_SendCmd(0x04);  // 通知摆杆：任务6（球在任意位置，跑一圈）
+    task_mode = TASK_5;
+    Task_Init();
+    pid_speed.Enabled = 1;
+    pid_line.Enabled  = 1;
+    pid_steer.Enabled = 0;
+    lr4_state = LR_COOLDOWN;
+    lr4_yaw_total = 0;
+    lr4_yaw_last = yaw_angle;
+}
+void Task5(void)
+{
+    Task4();
 }

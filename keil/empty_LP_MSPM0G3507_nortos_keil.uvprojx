@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>__MSPM0G3507__</Define>
               <Undefine></Undefine>
-              <IncludePath>..\ti;..\;..\third_party\CMSIS\Core\Include;..\USER\BSP;..\USER\ICM45686;..\USER\IMU;..\USER\LCD;..\USER\Easy_Menu;..\USER\Key;..\USER\LED;..\USER\Motor;..\USER\Gray;..\USER\PID;..\..\Car;..\USER\NRF24L01</IncludePath>
+              <IncludePath>..\ti;..\;..\third_party\CMSIS\Core\Include;..\USER\BSP;..\USER\ICM45686;..\USER\IMU;..\USER\LCD;..\USER\Easy_Menu;..\USER\Key;..\USER\LED;..\USER\Motor;..\USER\Gray;..\USER\PID;..\..\Car</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -424,6 +424,11 @@
               <FileType>1</FileType>
               <FilePath>..\task.c</FilePath>
             </File>
+            <File>
+              <FileName>sysctl_init.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\sysctl_init.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -505,11 +510,6 @@
               <FilePath>..\USER\Motor\encoder.c</FilePath>
             </File>
             <File>
-              <FileName>blueserial.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\BlueSerial\blueserial.c</FilePath>
-            </File>
-            <File>
               <FileName>motor.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\Motor\motor.c</FilePath>
@@ -525,19 +525,9 @@
               <FilePath>..\USER\Gray\Gray.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_sg90.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\BSP\bsp_sg90.c</FilePath>
-            </File>
-            <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\PID\pid.c</FilePath>
-            </File>
-            <File>
-              <FileName>NRF24L01.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\NRF24L01\NRF24L01.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -653,6 +643,11 @@
               <FileName>dl_vref.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\ti\driverlib\dl_vref.c</FilePath>
+            </File>
+            <File>
+              <FileName>dl_sysctl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ti\driverlib\dl_sysctl.c</FilePath>
             </File>
           </Files>
         </Group>
