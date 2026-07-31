@@ -12,7 +12,7 @@ extern float yaw_angle;
 
 /* ============ PID 实例 ============ */
 PID_t pid_speed = {
-    .Kp = 8.8f, .Ki = 0.1f, .Kd = 0.0f,
+    .Kp = 13.8f, .Ki = 0.1f, .Kd = 0.0f,
     .OutMax = 7000, .OutMin = -7000,
     .IntegralMax = 5000, .IntegralMin = -5000,
     .Mode = PID_INCREMENTAL, .Enabled = 1
@@ -41,7 +41,7 @@ int16_t line_pos = 0;
 // static const int8_t line_weight[8] = {-40, -25, -15, -5, 5, 15, 25, 40};
 
 // 新的4路权重数组（PA15, PA16, PA17, PA27）
-static const int8_t line_weight[4] = {-20, -10, 10, 20};
+static const int8_t line_weight[4] = {-24, -10, 10, 24};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
@@ -401,7 +401,7 @@ void Pendulum_SendCmd(uint8_t cmd)
 /* ================================================================ */
 
 #define LAP_RUN_SPEED        700      // 循迹速度
-#define LAP_SLOW_DOWN_DIST   5800.0f  // 距离到了 5.5 米 → 减速
+#define LAP_SLOW_DOWN_DIST   5700.0f  // 距离到了 5.5 米 → 减速
 #define LAP_SLOW_DOWN_YAW    330.0f   // 累计角度 > 320° → 确认快走完一圈
 
 typedef enum {
@@ -439,7 +439,7 @@ void Task1(void)
 
     /* 每500ms打印距离和角度 */
     static uint32_t print_cnt = 0;
-    if (++print_cnt >= 50) { print_cnt = 0; printf("dist=%.0f yaw=%.0f\r\n", CurrentDistance, yaw_total); }
+    if (++print_cnt >= 10) { print_cnt = 0; printf("dist=%.0f yaw=%.0f\r\n", CurrentDistance, yaw_total); }
 
     switch (lr_state)
     {
@@ -463,7 +463,7 @@ void Task1(void)
         PID_Calc();
 
         /* 距离到6米 或 角度到360° → 停车 */
-        if (CurrentDistance >= 6000.0f || yaw_total >= 360.0f)
+        if (CurrentDistance >= 6000.0f || yaw_total >= 358.0f)
             lr_state = LR_STOP;
         break;
     }
@@ -487,14 +487,16 @@ void Task2_start(void)
 }
 void Task2(void)
 {
-    Set_PWM(1500,1500);
+    Set_PWM(0, 0);
 }
 /* ================================================================ */
 /*           任务三：AB段循迹（1.5米，≤8秒）                         */
 /* ================================================================ */
 
-#define TASK3_SPEED     600      // 循迹速度
-#define TASK3_TARGET_MM 1800.0f  // AB 距离 1.5 米
+#define TASK3_SPEED     520      // 巡迹速度
+#define TASK3_TARGET_MM 1700.0f  // 总行驶距离（1.5米处停计时，之后缓停）
+
+static int16_t t3_last_speed = 0;  // 任务三速度斜坡状态
 
 void Task3_start(void)
 {
@@ -504,45 +506,73 @@ void Task3_start(void)
     pid_speed.Enabled = 1;
     pid_line.Enabled  = 1;
     pid_steer.Enabled = 0;
+    t3_last_speed = 0;  // 重置速度斜坡
 }
 
 void Task3(void)
 {
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
-    /* 梯形速度曲线：加速 → 匀速 → 减速 */
+    /* 速度曲线：加速 → 匀速 → 缓减速 → 滑停 */
     float speed = 0;
-    float base_speed  = 200.0f;    // 起步基础速度
-    float accel_dist  = 500.0f;    // 加速段 500mm
-    float decel_start = 1500.0f;   // 1500mm 开始减速
-    float total_dist  = TASK3_TARGET_MM;
+    float base_speed  = 180.0f;    // 起步基础速度
+    float accel_end   = 400.0f;    // 加速段 400mm
+    float cruise_end  = 1200.0f;   // 匀速段结束
+    float timer_stop  = 1500.0f;   // 1500mm 停计时（通过B点）
+    float total_dist  = TASK3_TARGET_MM;  // 1700mm 总距离
 
-    if (CurrentDistance < accel_dist)
-        speed = base_speed + (TASK3_SPEED - base_speed) * (CurrentDistance / accel_dist);
-    else if (CurrentDistance < decel_start)
+    if (CurrentDistance < accel_end)
+    {
+        /* S曲线加速：base_speed → TASK3_SPEED */
+        float x = CurrentDistance / accel_end;
+        speed = base_speed + (TASK3_SPEED - base_speed) * (3*x*x - 2*x*x*x);
+    }
+    else if (CurrentDistance < cruise_end)
+    {
+        /* 匀速段 */
         speed = TASK3_SPEED;
+    }
+    else if (CurrentDistance < timer_stop)
+    {
+        /* S曲线收速：TASK3_SPEED → 450（过B点前收速，保护小球） */
+        float t = (CurrentDistance - cruise_end) / (timer_stop - cruise_end);
+        speed = TASK3_SPEED - 70.0f * (3*t*t - 2*t*t*t);
+    }
+    else if (CurrentDistance < total_dist)
+    {
+        /* S曲线缓减：450 → 80 */
+        Stopwatch_Stop();
+        float t = (CurrentDistance - timer_stop) / (total_dist - timer_stop);
+        speed = 450.0f - 370.0f * (3*t*t - 2*t*t*t);
+    }
     else
     {
-        /* 进入减速段 → 停计时 */
+        /* 到达1800mm，PID自然减速到0 */
         Stopwatch_Stop();
-        if (CurrentDistance < total_dist)
-            speed = TASK3_SPEED * ((total_dist - CurrentDistance) / (total_dist - decel_start));
-        else
-            speed = 0;
+        speed = 0;
+        /* 实际速度降到30以下 → 真正停车 */
+        if (((float)speedA + (float)speedB) / 2.0f < 30.0f)
+        {
+            Set_PWM(0, 0);
+            task_mode = TASK_IDLE;
+            return;
+        }
     }
 
-    target_speed = (int16_t)speed;
+    /* PWM斜坡：限制速度变化率，每步最多变化5 */
+    #define SPEED_STEP 5
+    int16_t target = (int16_t)speed;
+    if (target > t3_last_speed + SPEED_STEP) target = t3_last_speed + SPEED_STEP;
+    if (target < t3_last_speed - SPEED_STEP) target = t3_last_speed - SPEED_STEP;
+    t3_last_speed = target;
+
+    target_speed = target;
     target_line  = 0;
     PID_Calc();
 
-    /* 走够 1.5 米 → 停车 */
-    if (CurrentDistance >= TASK3_TARGET_MM)
-    {
-        Set_PWM(0, 0);
-        task_mode = TASK_IDLE;
-        Task_Timer_Stop();
-        Stopwatch_Stop();
-    }
+    /* 每200ms打印速度和距离 */
+    static uint32_t t3_dbg = 0;
+    if (++t3_dbg >= 20) { t3_dbg = 0; printf("T3: dist=%.0f spd=%d actual=%d\r\n", CurrentDistance, target, (speedA+speedB)/2); }
 }
 /* ================================================================ */
 /*      任务四/五：循迹跑一圈经过A点（≤30秒，不要求精确停车）        */
@@ -591,17 +621,25 @@ void Task4(void)
         speed = LAP45_RUN_SPEED;
     else
     {
-        /* 进入减速段 → 停计时 */
-        Stopwatch_Stop();
+        /* 进入减速段 */
         if (CurrentDistance < stop_dist)
             speed = LAP45_RUN_SPEED * ((stop_dist - CurrentDistance) / (stop_dist - decel_start));
         else
             speed = 0;
     }
 
+    /* 弯道降速：根据yaw rate自动减速 */
+    float yaw_rate = fabs(delta) / 0.01f;  // 度/秒
+    if (yaw_rate > 30.0f)
+        speed *= 0.7f;   // 弯道降30%
+
     target_speed = (int16_t)speed;
     target_line  = 0;
     PID_Calc();
+
+    /* 每200ms打印调试信息 */
+    static uint32_t t4_dbg = 0;
+    if (++t4_dbg >= 20) { t4_dbg = 0; printf("T4: dist=%.0f yaw=%.0f spd=%d actual=%d\r\n", CurrentDistance, lr4_yaw_total, (int16_t)speed, (speedA+speedB)/2); }
 
     /* 距离到 或 角度到 → 停车 */
     if (CurrentDistance >= stop_dist || lr4_yaw_total >= 360.0f)
