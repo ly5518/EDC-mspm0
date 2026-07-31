@@ -285,9 +285,9 @@ int main(void)
         if (_10ms_flag)
         {
             _10ms_flag = 0;
-            Line_CalcPosition();   // 循迹线位置（每10ms更新）
-            Task_Run();            // 任务调度（非阻塞）
-
+            Gray_Update_String();    // 读取4路传感器
+            Line_CalcPosition();     // 计算循迹线位置
+            Task_Run();              // 任务调度（非阻塞）
         }
 
         // 菜单触发任务（互斥：启动新任务自动停掉旧任务）
@@ -331,18 +331,10 @@ int main(void)
             task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
             Task5_start();
         }
-        // 每 100ms 采集灰度并更新数字值
+        // 每 100ms 刷新菜单显示
         if (print_flag)
         {
             print_flag = 0;
-
-            // 读取4路数字灰度传感器（PA15, PA16, PA17, PA27）
-            // 检测到黑线=0，检测到白底=1
-            Gray_Update_String();
-
-            // 计算循迹线位置
-            Line_CalcPosition();
-
             Easy_Menu_Display_Refresh(); // 刷新当前页面（更新 Text_Item 显示）
         }
     }
