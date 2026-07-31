@@ -515,16 +515,6 @@
               <FilePath>..\USER\Motor\motor.c</FilePath>
             </File>
             <File>
-              <FileName>ADC.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\Gray\ADC.c</FilePath>
-            </File>
-            <File>
-              <FileName>Gray.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\Gray\Gray.c</FilePath>
-            </File>
-            <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\PID\pid.c</FilePath>

@@ -94,8 +94,8 @@ targets:
           beforeBuildTasks:
             - name: Run Sysconfig
               abortAfterFailed: true
-              command: call "E:\study_2\mspm0g3507\my_project\EDC-mspm0\keil\syscfg.bat" . empty.syscfg
-              disable: false
+              command: call syscfg.bat . empty.syscfg
+              disable: true
               stopBuildAfterFailed: true
           c/cpp-compiler:
             language-c: c99

@@ -232,7 +232,7 @@ int main(void)
 
     Motor_Init();
     Encoder_Init();
-
+    
     /* ADC 中断使能（轮询方式需要读取中断状态寄存器）*/
     // DL_ADC12_clearInterruptStatus(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
     // DL_ADC12_enableInterrupt(ADC12_0_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
@@ -241,7 +241,6 @@ int main(void)
     // 4路数字灰度传感器无需初始化，GPIO已在SYSCFG_DL_GPIO_init()中配置为输入
     // PA15, PA16, PA17, PA27 已配置为数字输入（无上下拉）
     delay_ms(20);
-
     while (1)
     {
         // 菜单系统周期刷新（传入 menu_count ，单位 1ms）

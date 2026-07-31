@@ -690,6 +690,11 @@ static void Stopwatch_Update(void)
     stopwatch_total_ms += delta;   // easy_menu.tick = menu_count，每 1ms 递增
 }
 
+void Stopwatch_Stop(void)
+{
+    stopwatch_running = 0;
+}
+
 void Tim_S_Callback(void)
 {
     /* USER CODE BEGIN */

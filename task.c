@@ -7,11 +7,12 @@
 #include <math.h>
 #include <stdio.h>
 #include "board.h"
+#include "Easy_Menu_User.h"
 extern float yaw_angle;
 
 /* ============ PID 实例 ============ */
 PID_t pid_speed = {
-    .Kp = 1.8f, .Ki = 0.1f, .Kd = 0.0f,
+    .Kp = 8.8f, .Ki = 0.1f, .Kd = 0.0f,
     .OutMax = 7000, .OutMin = -7000,
     .IntegralMax = 5000, .IntegralMin = -5000,
     .Mode = PID_INCREMENTAL, .Enabled = 1
@@ -23,7 +24,7 @@ PID_t pid_steer = {
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 1
 };
 PID_t pid_line = {
-    .Kp = 45.0f, .Ki = 0.0f, .Kd = 0.1f,
+    .Kp = 35.0f, .Ki = 0.0f, .Kd = 0.1f,
     .OutMax = 3000, .OutMin = -3000,
     .IntegralMax = 3000, .IntegralMin = -3000,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 0
@@ -40,7 +41,7 @@ int16_t line_pos = 0;
 // static const int8_t line_weight[8] = {-40, -25, -15, -5, 5, 15, 25, 40};
 
 // 新的4路权重数组（PA15, PA16, PA17, PA27）
-static const int8_t line_weight[4] = {-30, -10, 10, 30};
+static const int8_t line_weight[4] = {-20, -10, 10, 20};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
@@ -117,10 +118,10 @@ void Line_CalcPosition(void)
     uint8_t count = 0;
 
     // 遍历4路传感器（PA15, PA16, PA17, PA27）
-    // 检测到白底='1'，检测到黑线='0'
+    // 检测到黑线='0'，检测到白底='1'
     for (int i = 0; i < 4; i++)
     {
-        if (gray_digital_str[i] == '1')  // 白底
+        if (gray_digital_str[i] == '0')  // 黑线
         {
             sum += line_weight[i];
             count++;
@@ -382,7 +383,7 @@ void Task_LeftTurn_Start(void)
 }
 void Task_LeftTurn(void)
 {
-    Set_PWM(1000, -1000);
+    Set_PWM(-300, -300);
 }
 
 /* ================================================================ */
@@ -392,31 +393,24 @@ void Task_LeftTurn(void)
 void Pendulum_SendCmd(uint8_t cmd)
 {
     DL_UART_transmitData(UART_ppr_INST, cmd);
-    while (DL_UART_isBusy(UART_ppr_INST));
+    // while (DL_UART_isBusy(UART_ppr_INST));
 }
 
 /* ================================================================ */
 /*           任务一：循迹跑一圈（A点启停线检测）                        */
 /* ================================================================ */
 
-#define LAP_RUN_SPEED        1000     // 循迹速度
-#define LAP_START_DEBOUNCE_DIST 300.0f  // 起点消抖：走 300mm 后才进入循迹
-#define LAP_SLOW_DOWN_DIST   5500.0f  // 距离到了 5.5 米 → 可能减速（需 IMU 确认）
-#define LAP_SLOW_DOWN_YAW    320.0f   // 累计角度 > 320° → 确认快走完一圈
-#define LAP_STOP_BLACK_CNT   3        // ≥3 个传感器检测到黑 → 启停线
-#define LAP_STOP_DELAY_MM    25.0f    // 检测到启停线后再走 25mm 停车
-#define LAP_FALLBACK_DIST    6500.0f  // 兜底距离
+#define LAP_RUN_SPEED        700      // 循迹速度
+#define LAP_SLOW_DOWN_DIST   5800.0f  // 距离到了 5.5 米 → 减速
+#define LAP_SLOW_DOWN_YAW    330.0f   // 累计角度 > 320° → 确认快走完一圈
 
 typedef enum {
-    LR_COOLDOWN,    // 起点消抖阶段
     LR_FOLLOW,      // 循迹行驶
     LR_SLOW_DOWN,   // 减速循迹
-    LR_STOP_DELAY,  // 检测到启停线，再走一段
     LR_STOP         // 停车
 } LapRunState_t;
 
-static LapRunState_t lr_state = LR_COOLDOWN;
-static float lr_stop_start_dist = 0;   // 检测到启停线时的距离
+static LapRunState_t lr_state = LR_FOLLOW;
 static float yaw_total = 0;           // 累计航向角（0°→360°）
 static float yaw_last = 0;            // 上一次 yaw
 
@@ -427,15 +421,13 @@ void Task1_start(void)
     pid_speed.Enabled = 1;
     pid_line.Enabled  = 1;
     pid_steer.Enabled = 0;
-    lr_state = LR_COOLDOWN;
-    lr_stop_start_dist = 0;
+    lr_state = LR_FOLLOW;
     yaw_total = 0;
     yaw_last = yaw_angle;
 }
 
 void Task1(void)
 {
-    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
     /* 更新累计航向角（处理 ±180° 跳变） */
@@ -445,66 +437,33 @@ void Task1(void)
     yaw_total += delta;
     yaw_last = yaw_angle;
 
-    /* 统计黑传感器数量（4路） */
-    uint8_t black_cnt = 0;
-    for (int i = 0; i < 4; i++)
-        if (gray_digital_str[i] == '0') black_cnt++;
+    /* 每500ms打印距离和角度 */
+    static uint32_t print_cnt = 0;
+    if (++print_cnt >= 50) { print_cnt = 0; printf("dist=%.0f yaw=%.0f\r\n", CurrentDistance, yaw_total); }
 
     switch (lr_state)
     {
-    /* ---- 起点消抖：走 300mm 后进入循迹 ---- */
-    case LR_COOLDOWN:
-    {
-        target_speed = LAP_RUN_SPEED;
-        target_line  = 0;
-        PID_Calc();
-
-        if (CurrentDistance >= LAP_START_DEBOUNCE_DIST)
-            lr_state = LR_FOLLOW;
-        break;
-    }
-
-    /* ---- 正常循迹：距离 + 角度双重确认 ---- */
+    /* ---- 正常循迹：距离 + 角度确认快走完一圈 ---- */
     case LR_FOLLOW:
     {
         target_speed = LAP_RUN_SPEED;
         target_line  = 0;
         PID_Calc();
 
-        /* 距离到了 3.5 米 且 角度 > 320° → 进入最后一个弯，减速 */
         if (CurrentDistance >= LAP_SLOW_DOWN_DIST && yaw_total >= LAP_SLOW_DOWN_YAW)
             lr_state = LR_SLOW_DOWN;
         break;
     }
 
-    /* ---- 减速循迹：检测启停线 ---- */
+    /* ---- 减速循迹：距离到了就停车 ---- */
     case LR_SLOW_DOWN:
     {
         target_speed = LAP_RUN_SPEED / 3;
         target_line  = 0;
         PID_Calc();
 
-        /* 检测到启停线 */
-        if (black_cnt >= LAP_STOP_BLACK_CNT)
-        {
-            lr_stop_start_dist = CurrentDistance;
-            lr_state = LR_STOP_DELAY;
-        }
-
-        /* 兜底 */
-        if (CurrentDistance >= LAP_FALLBACK_DIST)
-            lr_state = LR_STOP;
-        break;
-    }
-
-    /* ---- 停车补偿：再走 25mm ---- */
-    case LR_STOP_DELAY:
-    {
-        target_speed = LAP_RUN_SPEED / 3;
-        target_line  = 0;
-        PID_Calc();
-
-        if (CurrentDistance - lr_stop_start_dist >= LAP_STOP_DELAY_MM)
+        /* 距离到6米 或 角度到360° → 停车 */
+        if (CurrentDistance >= 6000.0f || yaw_total >= 360.0f)
             lr_state = LR_STOP;
         break;
     }
@@ -514,6 +473,9 @@ void Task1(void)
         Set_PWM(0, 0);
         task_mode = TASK_IDLE;
         Task_Timer_Stop();
+        Stopwatch_Stop();
+        break;
+    default:
         break;
     }
 }
@@ -525,14 +487,14 @@ void Task2_start(void)
 }
 void Task2(void)
 {
-    Set_PWM(1000, -1000);
+    Set_PWM(1500,1500);
 }
 /* ================================================================ */
 /*           任务三：AB段循迹（1.5米，≤8秒）                         */
 /* ================================================================ */
 
-#define TASK3_SPEED     400      // 循迹速度
-#define TASK3_TARGET_MM 1600.0f  // AB 距离 1.5 米
+#define TASK3_SPEED     600      // 循迹速度
+#define TASK3_TARGET_MM 1800.0f  // AB 距离 1.5 米
 
 void Task3_start(void)
 {
@@ -548,7 +510,28 @@ void Task3(void)
 {
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
-    target_speed = TASK3_SPEED;
+    /* 梯形速度曲线：加速 → 匀速 → 减速 */
+    float speed = 0;
+    float base_speed  = 200.0f;    // 起步基础速度
+    float accel_dist  = 500.0f;    // 加速段 500mm
+    float decel_start = 1500.0f;   // 1500mm 开始减速
+    float total_dist  = TASK3_TARGET_MM;
+
+    if (CurrentDistance < accel_dist)
+        speed = base_speed + (TASK3_SPEED - base_speed) * (CurrentDistance / accel_dist);
+    else if (CurrentDistance < decel_start)
+        speed = TASK3_SPEED;
+    else
+    {
+        /* 进入减速段 → 停计时 */
+        Stopwatch_Stop();
+        if (CurrentDistance < total_dist)
+            speed = TASK3_SPEED * ((total_dist - CurrentDistance) / (total_dist - decel_start));
+        else
+            speed = 0;
+    }
+
+    target_speed = (int16_t)speed;
     target_line  = 0;
     PID_Calc();
 
@@ -558,6 +541,7 @@ void Task3(void)
         Set_PWM(0, 0);
         task_mode = TASK_IDLE;
         Task_Timer_Stop();
+        Stopwatch_Stop();
     }
 }
 /* ================================================================ */
@@ -568,7 +552,7 @@ void Task3(void)
 #define LAP45_RUN_SPEED  600      // 任务四五循迹速度（比任务一慢）
 static float lr4_yaw_total = 0;
 static float lr4_yaw_last = 0;
-static LapRunState_t lr4_state = LR_COOLDOWN;
+static LapRunState_t lr4_state = LR_FOLLOW;
 
 void Task4_start(void)
 {
@@ -578,14 +562,13 @@ void Task4_start(void)
     pid_speed.Enabled = 1;
     pid_line.Enabled  = 1;
     pid_steer.Enabled = 0;
-    lr4_state = LR_COOLDOWN;
+    lr4_state = LR_FOLLOW;
     lr4_yaw_total = 0;
     lr4_yaw_last = yaw_angle;
 }
 
 void Task4(void)
 {
-    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
     /* 更新累计航向角 */
@@ -595,49 +578,38 @@ void Task4(void)
     lr4_yaw_total += delta;
     lr4_yaw_last = yaw_angle;
 
-    /* 统计黑传感器数量（4路） */
-    uint8_t black_cnt = 0;
-    for (int i = 0; i < 4; i++)
-        if (gray_digital_str[i] == '0') black_cnt++;
+    /* 梯形速度曲线 */
+    float speed = 0;
+    float base_speed  = 200.0f;    // 起步基础速度
+    float accel_dist  = 500.0f;    // 加速段 500mm
+    float decel_start = 5800.0f;   // 5.8m 开始减速
+    float stop_dist   = 6200.0f;   // 6.2m 停车
 
-    switch (lr4_state)
+    if (CurrentDistance < accel_dist)
+        speed = base_speed + (LAP45_RUN_SPEED - base_speed) * (CurrentDistance / accel_dist);
+    else if (CurrentDistance < decel_start && lr4_yaw_total < 360.0f)
+        speed = LAP45_RUN_SPEED;
+    else
     {
-    case LR_COOLDOWN:
-    {
-        target_speed = LAP45_RUN_SPEED;
-        target_line  = 0;
-        PID_Calc();
-        if (CurrentDistance >= LAP_START_DEBOUNCE_DIST)
-            lr4_state = LR_FOLLOW;
-        break;
+        /* 进入减速段 → 停计时 */
+        Stopwatch_Stop();
+        if (CurrentDistance < stop_dist)
+            speed = LAP45_RUN_SPEED * ((stop_dist - CurrentDistance) / (stop_dist - decel_start));
+        else
+            speed = 0;
     }
-    case LR_FOLLOW:
+
+    target_speed = (int16_t)speed;
+    target_line  = 0;
+    PID_Calc();
+
+    /* 距离到 或 角度到 → 停车 */
+    if (CurrentDistance >= stop_dist || lr4_yaw_total >= 360.0f)
     {
-        target_speed = LAP45_RUN_SPEED;
-        target_line  = 0;
-        PID_Calc();
-        if (CurrentDistance >= LAP_SLOW_DOWN_DIST && lr4_yaw_total >= LAP_SLOW_DOWN_YAW)
-            lr4_state = LR_SLOW_DOWN;
-        break;
-    }
-    case LR_SLOW_DOWN:
-    {
-        target_speed = LAP45_RUN_SPEED / 3;
-        target_line  = 0;
-        PID_Calc();
-        if (black_cnt >= LAP_STOP_BLACK_CNT)
-            lr4_state = LR_STOP;
-        if (CurrentDistance >= LAP_FALLBACK_DIST)
-            lr4_state = LR_STOP;
-        break;
-    }
-    case LR_STOP:
         Set_PWM(0, 0);
         task_mode = TASK_IDLE;
         Task_Timer_Stop();
-        break;
-    default:
-        break;
+        Stopwatch_Stop();
     }
 }
 
@@ -650,7 +622,7 @@ void Task5_start(void)
     pid_speed.Enabled = 1;
     pid_line.Enabled  = 1;
     pid_steer.Enabled = 0;
-    lr4_state = LR_COOLDOWN;
+    lr4_state = LR_FOLLOW;
     lr4_yaw_total = 0;
     lr4_yaw_last = yaw_angle;
 }
