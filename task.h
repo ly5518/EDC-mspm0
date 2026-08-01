@@ -12,14 +12,11 @@
 /* ============ 任务模式 ============ */
 typedef enum {
     TASK_IDLE = 0,
-    TASK_SQUARE,
-    TASK_LINE_SQUARE,
-    TASK_LEFT_TURN,
-    TASK_1,       
-    TASK_2,       
-    TASK_3,       
-    TASK_4,       
-    TASK_5,       
+    TASK_1,
+    TASK_2,
+    TASK_3,
+    TASK_4,
+    TASK_5,
 } TaskMode_t;
 
 /* ============ 任务节点 ============ */
@@ -45,13 +42,7 @@ extern int16_t line_pos;
 
 /* ============ 任务状态 ============ */
 extern TaskMode_t task_mode;
-extern TaskPoint_t current_point;
 extern float CurrentDistance;
-
-/* ============ 正方形参数 ============ */
-extern float sq_target;
-extern float sq_turn_target;
-extern int16_t sq_target_speed;
 
 /* ============ 函数 ============ */
 void Task_Init(void);
@@ -59,18 +50,7 @@ void Motor_PID_Sync(void);
 void Line_CalcPosition(void);
 void Task_Run(void);
 
-/* ============ 正方形参数 ============ */
-extern uint8_t ls_lap_target;  // 循迹圈数目标
-
-/* ============ 任务函数 ============ */
-void Task_Square_Start(void);
-void Task_Square(void);
-void Task_Line_Start(void);
-void Task_LineSquare(void);
-void Task_LeftTurn(void);
-void Task_LeftTurn_Start(void);
 /* ============ 菜单触发标志 ============ */
-extern volatile uint8_t leftturn_flag;
 extern volatile uint8_t task1_flag;
 extern volatile uint8_t task2_flag;
 extern volatile uint8_t task3_flag;

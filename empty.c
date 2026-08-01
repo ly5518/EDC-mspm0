@@ -20,11 +20,8 @@ static void LCD_Display_Chinese_Char_Line(unsigned short int x, unsigned char li
 
 extern uint32_t nowtime;
 volatile uint32_t count = 0;
-volatile uint8_t square_flag = 0;      // 菜单触发正方形任务
-volatile uint8_t line_square_flag = 0; // 菜单触发循迹正方形任务
-volatile uint8_t leftturn_flag = 0;  // 菜单触发原地左转
-extern volatile uint8_t task1_flag; 
-extern volatile uint8_t task2_flag; 
+extern volatile uint8_t task1_flag;
+extern volatile uint8_t task2_flag;
 extern volatile uint8_t task3_flag;
 extern volatile uint8_t task4_flag;
 extern volatile uint8_t task5_flag;
@@ -223,6 +220,7 @@ int main(void)
     TimeA1_Init();
     LCD_init();
     LCD_set_color(LCD_DEFAULT_PENCOLOR, LCD_DEFAULT_BGCOLOR);
+    LCD_set_display_font(LCD_8X16_FONT);  // 使用8x16大字体
 
     // 初始化 Easy_Menu，绑定 LCD 显示回调（字体 6x8，与 Easy_Menu CHAR_WIDTH=6, CHAR_HEIGHT=8 匹配）
     Easy_Menu_Init(LCD_Display_Char,
@@ -291,22 +289,7 @@ int main(void)
         }
 
         // 菜单触发任务（互斥：启动新任务自动停掉旧任务）
-        if (square_flag)
-        {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0;  task1_flag = 0;
-            Task_Square_Start();
-        }
-        else if (line_square_flag)
-        {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0;
-            Task_Line_Start();
-        }
-        else if (leftturn_flag)
-        {
-            square_flag = 0; line_square_flag = 0; leftturn_flag = 0; 
-            Task_LeftTurn_Start();
-        }
-        else if (task1_flag)
+        if (task1_flag)
         {
             task1_flag = 0; task2_flag = 0; task3_flag = 0; task4_flag = 0; task5_flag = 0;
             Task1_start();

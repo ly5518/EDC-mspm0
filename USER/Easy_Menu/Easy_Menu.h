@@ -13,8 +13,8 @@
 #define SCREEN_WIDTH     128           // 屏幕宽（像素）
 #define SCREEN_HEIGHT    160            // 屏幕高（像素）
 
-#define CHAR_WIDTH       6             // 字符宽（像素），统一使用 ASCII 字符的宽度，中文字符必须为 ASCII 字符的两倍
-#define CHAR_HEIGHT      8             // 字符高（像素）
+#define CHAR_WIDTH       8             // 字符宽（像素），统一使用 ASCII 字符的宽度，中文字符必须为 ASCII 字符的两倍
+#define CHAR_HEIGHT      16            // 字符高（像素）
 
 #define USER_FREE_CHAR  '>'            // 解锁状态下的 ASCII 指示符
 #define USER_FIX_CHAR   '&'            // 锁定状态下的 ASCII 指示符

@@ -45,22 +45,8 @@ static const int8_t line_weight[4] = {-24, -10, 10, 24};
 
 /* ============ 任务状态 ============ */
 TaskMode_t task_mode = TASK_IDLE;
-TaskPoint_t current_point = POINT_A;
 float CurrentDistance = 0.0f;
 
-/* ============ 正方形参数 ============ */
-float sq_target = 600.0f;
-float sq_turn_target = 90.0f;
-int16_t sq_target_speed = 350;   //600;
-
-/* ============ 转弯辅助 ============ */
-static float turned = 0;
-static float prev_yaw = 0;
-static float turn_target = 0;
-static float sq_straight_yaw = 0;
-static uint8_t straight_init = 0;
-uint8_t sq_cycle_count = 0;
-volatile uint8_t postrack_flag = 0;
 volatile uint8_t task1_flag = 0;
 volatile uint8_t task2_flag = 0;
 volatile uint8_t task3_flag = 0;
@@ -99,9 +85,6 @@ void Task_Init(void)
     PID_Clear(&pid_line);
     Encoder_ResetDist();
     CurrentDistance = 0;
-    current_point = POINT_A;
-    straight_init = 0;
-    sq_cycle_count = 0;
 }
 
 void Motor_PID_Sync(void)
@@ -175,15 +158,6 @@ void Task_Run(void)
         Set_PWM(0, 0);
         Task_Timer_Stop();
         break;
-    case TASK_SQUARE:
-        Task_Square();
-        break;
-    case TASK_LINE_SQUARE:
-        Task_LineSquare();
-        break;
-    case TASK_LEFT_TURN:
-        Task_LeftTurn();
-        break;
         case TASK_1:
             Task1();
             break;
@@ -200,190 +174,6 @@ void Task_Run(void)
             Task5();
             break;
     }
-}
-
-/* ============ 正方形任务 ============ */
-void Task_Square_Start(void)
-{
-    task_mode = TASK_SQUARE;
-    current_point = POINT_A;
-    Task_Init();
-    pid_speed.Enabled = 1;
-    pid_steer.Enabled = 1;
-    pid_line.Enabled = 0;
-}
-
-void Task_Square(void)
-{
-    CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
-
-    switch (current_point)
-    {
-    /* ---- 直走 ---- */
-    case POINT_A:
-    {
-        if (!straight_init)
-        {
-            PID_Clear(&pid_steer);
-            sq_straight_yaw = yaw_angle;
-            straight_init = 1;
-        }
-
-        target_speed = sq_target_speed;
-        target_yaw = sq_straight_yaw;
-        PID_Calc();
-
-        if (CurrentDistance >= sq_target)
-        {
-            prev_yaw = yaw_angle;
-            turned = 0;
-            PID_Clear(&pid_steer);
-            turn_target = yaw_angle - sq_turn_target;
-            while (turn_target - yaw_angle > 180.0f)  turn_target -= 360.0f;
-            while (turn_target - yaw_angle < -180.0f) turn_target += 360.0f;
-            straight_init = 0;
-            // 不清距离，转弯结束后再清
-            current_point = POINT_B;
-        }
-        break;
-    }
-
-    /* ---- 转弯 ---- */
-    case POINT_B:
-    {
-        float delta = yaw_angle - prev_yaw;
-        if (delta > 180.0f)  delta -= 360.0f;
-        if (delta < -180.0f) delta += 360.0f;
-        turned += delta;
-        prev_yaw = yaw_angle;
-
-        target_speed = sq_target_speed / 2;
-        target_yaw = turn_target;
-        PID_Calc();
-
-        if (fabs(turned) >= sq_turn_target - 1.0f)
-        {
-            sq_straight_yaw = yaw_angle;
-            pid_steer.ErrorInt = 0;
-            Encoder_ResetDist();
-            CurrentDistance = 0;
-            sq_cycle_count++;
-
-            if (sq_cycle_count >= 4)
-            {
-                task_mode = TASK_IDLE;
-            }
-            else
-            {
-                current_point = POINT_A;
-            }
-        }
-        break;
-    }
-
-    default:
-        break;
-    }
-}
-
-/* ================================================================ */
-/*                     任务2：循迹正方形                              */
-/* ================================================================ */
-
-/* 循迹状态 */
-typedef enum { LF_FOLLOW, LF_TURNING } LFState_t;
-static LFState_t lf_state = LF_FOLLOW;
-static float lf_turn_start = 0;
-static uint8_t lf_corner_count = 0;  // 当前圈已转角数
-static uint8_t lf_lap_count = 0;     // 已完成圈数
-
-void Task_LineSquare(void)
-{
-    extern char gray_digital_str[5];  // 4路数字灰度传感器 + '\0'
-
-    if (lf_state == LF_FOLLOW)
-    {
-        pid_speed.Enabled = 1;
-        pid_line.Enabled = 1;
-        pid_steer.Enabled = 0;
-        target_speed = sq_target_speed;
-        target_line = 0;
-        PID_Calc();
-
-        // 检测到全部黑线（4路都是'0'）→ 开始转弯
-        if (gray_digital_str[0] == '0' && gray_digital_str[1] == '0' &&
-            gray_digital_str[2] == '0' && gray_digital_str[3] == '0')
-        {
-            lf_state = LF_TURNING;
-            lf_turn_start = yaw_angle;
-            PID_Clear(&pid_steer);
-            PID_Clear(&pid_line);
-        }
-    }
-    else
-    {
-        // 转弯：保持速度，转向环转90°
-        pid_speed.Enabled = 1;
-        pid_line.Enabled = 0;
-        pid_steer.Enabled = 1;
-        target_speed = sq_target_speed;
-        target_yaw = lf_turn_start - 90.0f;
-        if (target_yaw < -180.0f) target_yaw += 360.0f;
-        PID_Calc();
-
-        // 转够55° 且 线重新出现 → 回到循迹
-        float turned = yaw_angle - lf_turn_start;
-        if (turned > 180.0f)  turned -= 360.0f;
-        if (turned < -180.0f) turned += 360.0f;
-
-        // 检测是否有任何一路检测到黑线（'0'）
-        uint8_t line_found = 0;
-        for (int i = 0; i < 4; i++)
-            if (gray_digital_str[i] == '0') { line_found = 1; break; }
-
-        if (fabs(turned) >= 55.0f && line_found)
-        {
-            lf_state = LF_FOLLOW;
-            lf_corner_count++;
-            PID_Clear(&pid_steer);
-            PID_Clear(&pid_line);
-
-            // 4个角 = 1圈
-            if (lf_corner_count >= 4)
-            {
-                lf_corner_count = 0;
-                lf_lap_count++;
-
-                // 走完指定圈数 → 停车
-                if (lf_lap_count >= ls_lap_target)
-                {
-                    lf_lap_count = 0;
-                    task_mode = TASK_IDLE;
-                    Set_PWM(0, 0);
-                }
-            }
-        }
-    }
-}
-
-// ---- 任务：直线循迹（测试用，跑10秒停）----
-void Task_Line_Start(void)
-{
-    task_mode = TASK_LINE_SQUARE;
-    Task_Init();
-    lf_corner_count = 0;
-    lf_lap_count = 0;
-}
-
-
-void Task_LeftTurn_Start(void)
-{
-    task_mode = TASK_LEFT_TURN;  
-    Task_Init();
-}
-void Task_LeftTurn(void)
-{
-    Set_PWM(-300, -300);
 }
 
 /* ================================================================ */
@@ -403,7 +193,7 @@ void Pendulum_SendCmd(uint8_t cmd)
 #define LAP_RUN_SPEED        700      // 循迹速度
 #define LAP_SLOW_DOWN_DIST   5700.0f  // 距离到了 5.5 米 → 减速
 #define LAP_SLOW_DOWN_YAW    320.0f   // 累计角度 > 320° → 确认快走完一圈
-#define LAP_STOP_DIST        5979.0f  // 停车距离（一圈约6.14米）
+#define LAP_STOP_DIST        5900.0f  // 停车距离（一圈约6.14米）
 #define LAP_STOP_YAW         360.0f   // 停车角度
 
 typedef enum {
@@ -650,9 +440,12 @@ void Task4(void)
     lr4_yaw_total += delta;
     lr4_yaw_last = yaw_angle;
 
-    /* 弯道降速：line_pos越大（偏离中心越多）→ 速度越低 */
-    float curve_factor = 1.0f - 0.5f * ((float)abs(line_pos) / 20.0f);
-    if (curve_factor < 0.5f) curve_factor = 0.5f;  // 最低降到50%
+    /* 弯道降速：line_pos越大（偏离中心越多）→ 速度越低（低通滤波防抖） */
+    static float curve_factor_smooth = 1.0f;
+    float curve_factor_raw = 1.0f - 0.5f * ((float)abs(line_pos) / 20.0f);
+    if (curve_factor_raw < 0.5f) curve_factor_raw = 0.5f;
+    curve_factor_smooth = curve_factor_smooth * 0.8f + curve_factor_raw * 0.2f;
+    float curve_factor = curve_factor_smooth;
 
     float speed = 0;
     float base_speed  = 200.0f;     // 起步速度
