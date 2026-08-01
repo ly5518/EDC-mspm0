@@ -191,7 +191,7 @@ void Pendulum_SendCmd(uint8_t cmd)
 /* ================================================================ */
 
 #define LAP_RUN_SPEED        700      // 循迹速度
-#define LAP_SLOW_DOWN_DIST   5700.0f  // 距离到了 5.5 米 → 减速
+#define LAP_SLOW_DOWN_DIST   5600.0f  // 距离到了 5.5 米 → 减速
 #define LAP_SLOW_DOWN_YAW    320.0f   // 累计角度 > 320° → 确认快走完一圈
 #define LAP_STOP_DIST        5900.0f  // 停车距离（一圈约6.14米）
 #define LAP_STOP_YAW         360.0f   // 停车角度
@@ -203,12 +203,12 @@ typedef enum {
 } LapRunState_t;
 
 static LapRunState_t lr_state = LR_FOLLOW;
-static float yaw_total = 0;           // 累计航向角（0°→360°）
-static float yaw_last = 0;            // 上一次 yaw
+static float yaw_start = 0;           // 启动时的yaw角度
 static int16_t t1_last_speed = 0;     // 速度斜坡状态
 
 void Task1_start(void)
 {
+    Task_Timer_Start();
     task_mode = TASK_1;
     Task_Init();
     t1_last_speed = 0;
@@ -216,24 +216,21 @@ void Task1_start(void)
     pid_line.Enabled  = 1;
     pid_steer.Enabled = 0;
     lr_state = LR_FOLLOW;
-    yaw_total = 0;
-    yaw_last = yaw_angle;
+    yaw_start = yaw_angle;  // 记录启动时的朝向
 }
 
 void Task1(void)
 {
     CurrentDistance = ((float)distA_mm + (float)distB_mm) / 2.0f;
 
-    /* 更新累计航向角（处理 ±180° 跳变） */
-    float delta = yaw_angle - yaw_last;
-    if (delta > 180.0f)  delta -= 360.0f;
-    if (delta < -180.0f) delta += 360.0f;
-    yaw_total += delta;
-    yaw_last = yaw_angle;
+    /* 计算yaw偏差：当前朝向 vs 启动朝向 */
+    float yaw_err = yaw_angle - yaw_start;
+    if (yaw_err > 180.0f)  yaw_err -= 360.0f;
+    if (yaw_err < -180.0f) yaw_err += 360.0f;
 
     /* 每500ms打印 */
     static uint32_t t1_dbg = 0;
-    if (++t1_dbg >= 50) { t1_dbg = 0; printf("T1: dist=%.0f yaw=%.0f state=%d\r\n", CurrentDistance, yaw_total, lr_state); }
+    if (++t1_dbg >= 50) { t1_dbg = 0; printf("T1: dist=%.0f yaw_err=%.1f state=%d\r\n", CurrentDistance, yaw_err, lr_state); }
 
     float speed = 0;
 
@@ -244,10 +241,10 @@ void Task1(void)
     {
         speed = LAP_RUN_SPEED;
 
-        if (CurrentDistance >= LAP_SLOW_DOWN_DIST && yaw_total >= LAP_SLOW_DOWN_YAW)
+        if (CurrentDistance >= LAP_SLOW_DOWN_DIST)
         {
             lr_state = LR_SLOW_DOWN;
-            printf("T1: SLOW_DOWN dist=%.0f yaw=%.0f\r\n", CurrentDistance, yaw_total);
+            printf("T1: SLOW_DOWN dist=%.0f yaw_err=%.1f\r\n", CurrentDistance, yaw_err);
         }
         break;
     }
@@ -261,36 +258,32 @@ void Task1(void)
         float smooth = progress * progress * (3.0f - 2.0f * progress);
         speed = 200.0f + (LAP_RUN_SPEED - 200.0f) * (1.0f - smooth);
 
-        if (CurrentDistance >= LAP_STOP_DIST * 0.92f)
+        /* 计算yaw偏差：当前朝向 vs 启动朝向 */
+        float yaw_err = yaw_angle - yaw_start;
+        if (yaw_err > 180.0f)  yaw_err -= 360.0f;
+        if (yaw_err < -180.0f) yaw_err += 360.0f;
+
+        /* 停车条件：距离到了 + 方向回正，或 兜底距离 */
+        uint8_t dist_ok = (CurrentDistance >= LAP_STOP_DIST * 0.92f);
+        uint8_t angle_ok = (fabs(yaw_err) < 8.0f);
+        uint8_t fallback = (CurrentDistance >= 5950.0f);
+
+        if ((dist_ok && angle_ok) || fallback)
         {
-            if (CurrentDistance >= LAP_STOP_DIST || yaw_total >= LAP_STOP_YAW)
-            {
-                printf("T1 STOP: dist=%.0f(>=%.0f) yaw=%.0f(>=%.0f)\r\n",
-                       CurrentDistance, LAP_STOP_DIST, yaw_total, LAP_STOP_YAW);
-                lr_state = LR_STOP;
-            }
+            printf("T1 STOP: dist=%.0f yaw_err=%.1f fb=%d\r\n",
+                   CurrentDistance, yaw_err, fallback);
+            lr_state = LR_STOP;
         }
         break;
     }
 
-    /* ---- 低速缓冲停车 ---- */
+    /* ---- 停车：保持TASK_1模式继续打印 ---- */
     case LR_STOP:
     {
-        static uint8_t stop_cnt = 0;
-        if (stop_cnt < 5)
-        {
-            speed = 80;
-            stop_cnt++;
-        }
-        else
-        {
-            Set_PWM(0, 0);
-            task_mode = TASK_IDLE;
-            Task_Timer_Stop();
-            Stopwatch_Stop();
-            stop_cnt = 0;
-        }
-        break;
+        Set_PWM(0, 0);
+        Task_Timer_Stop();
+        Stopwatch_Stop();
+        return;  // 直接返回，跳过后面的PID计算
     }
     default:
         break;
@@ -328,6 +321,7 @@ static int16_t t3_last_speed = 0;  // 任务三速度斜坡状态
 
 void Task3_start(void)
 {
+    Task_Timer_Start();
     Pendulum_SendCmd(0x02);  // 通知摆杆：任务4（球稳定在O，A→B）
     task_mode = TASK_3;
     Task_Init();
@@ -343,7 +337,7 @@ void Task3(void)
 
     /* 速度曲线：加速 → 匀速 → 缓减速 → 滑停 */
     float speed = 0;
-    float base_speed  = 200.0f;    // 起步基础速度
+    float base_speed  = 180.0f;    // 起步基础速度
     float accel_end   = 400.0f;    // 加速段 400mm
     float cruise_end  = 1200.0f;   // 匀速段结束
     float timer_stop  = 1500.0f;   // 1500mm 停计时（通过B点）
@@ -409,7 +403,7 @@ void Task3(void)
 /*      任务四/五：循迹跑一圈经过A点                                  */
 /* ================================================================ */
 
-#define LAP45_RUN_SPEED  550
+#define LAP45_RUN_SPEED  520
 static float lr4_yaw_total = 0;
 static float lr4_yaw_last = 0;
 static LapRunState_t lr4_state = LR_FOLLOW;
@@ -452,9 +446,9 @@ void Task4(void)
     float max_speed   = LAP45_RUN_SPEED * curve_factor;  // 弯道自动降速
     float accel_dist  = 800.0f;     // 加速段 800mm
     float decel_start = 5500.0f;    // 开始减速
-    float a_point     = 5981.0f;    // A点：停计时
+    float a_point     = 5900.0f;    // A点：停计时
     float stop_yaw    = 350.0f;     // A点角度：停计时
-    float car_stop    = 6100.0f;    // 停车距离
+    float car_stop    = 6000.0f;    // 停车距离
 
     /* A点停计时 */
     if (CurrentDistance >= a_point || lr4_yaw_total >= stop_yaw)

@@ -110,7 +110,7 @@ struct {
     .task3_flag = 0,
     .task4_flag = 0,
     .task5_flag = 0,
-    .dist__data = 5980,
+    .dist__data = 5900,
 };
 /* ============================================================== 页面、条目定义 ============================================================== */    
 Ordinary_Page main_page;
@@ -546,7 +546,8 @@ void Task__1__Item_Callback(unsigned char data)
     extern TaskMode_t task_mode;
     if (data == 1)
     {
-        task1_flag = 1; 
+        task1_flag = 1;
+        Task_Timer_Start();
         stopwatch_total_ms = 0;
         stopwatch_last_tick = easy_menu.tick;
         stopwatch_running = 1;
@@ -555,6 +556,7 @@ void Task__1__Item_Callback(unsigned char data)
     {
         task_mode = TASK_IDLE;
         Set_PWM(0, 0);
+        Task_Timer_Stop();
         stopwatch_running = 0;
     }
     /* USER CODE END */
@@ -568,6 +570,7 @@ void Task__3__Item_Callback(unsigned char data)
     if (data == 1)
     {
         task2_flag = 1;
+        Task_Timer_Start();
         stopwatch_total_ms = 0;
         stopwatch_last_tick = easy_menu.tick;
         stopwatch_running = 1;
@@ -575,7 +578,7 @@ void Task__3__Item_Callback(unsigned char data)
     else
     {
         task_mode = TASK_IDLE;
-        Set_PWM(0, 0);
+        Task_Timer_Stop();
         stopwatch_running = 0;
     }
     /* USER CODE END */
@@ -589,6 +592,7 @@ void Task__4__Item_Callback(unsigned char data)
     if (data == 1)
     {
         task3_flag = 1;
+        Task_Timer_Start();
         stopwatch_total_ms = 0;
         stopwatch_last_tick = easy_menu.tick;
         stopwatch_running = 1;
@@ -597,6 +601,7 @@ void Task__4__Item_Callback(unsigned char data)
     {
         task_mode = TASK_IDLE;
         Set_PWM(0, 0);
+        Task_Timer_Stop();
         stopwatch_running = 0;
     }
     /* USER CODE END */
@@ -610,6 +615,7 @@ void Task__5__Item_Callback(unsigned char data)
     if (data == 1)
     {
         task4_flag = 1;
+        Task_Timer_Start();
         stopwatch_total_ms = 0;
         stopwatch_last_tick = easy_menu.tick;
         stopwatch_running = 1;
@@ -618,6 +624,7 @@ void Task__5__Item_Callback(unsigned char data)
     {
         task_mode = TASK_IDLE;
         Set_PWM(0, 0);
+        Task_Timer_Stop();
         stopwatch_running = 0;
     }
     /* USER CODE END */
@@ -631,6 +638,7 @@ void Task__6__Item_Callback(unsigned char data)
     if (data == 1)
     {
         task5_flag = 1;
+        Task_Timer_Start();
         stopwatch_total_ms = 0;
         stopwatch_last_tick = easy_menu.tick;
         stopwatch_running = 1;
@@ -639,6 +647,7 @@ void Task__6__Item_Callback(unsigned char data)
     {
         task_mode = TASK_IDLE;
         Set_PWM(0, 0);
+        Task_Timer_Stop();
         stopwatch_running = 0;
     }
     /* USER CODE END */
