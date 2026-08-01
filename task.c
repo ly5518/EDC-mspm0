@@ -24,7 +24,7 @@ PID_t pid_steer = {
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 1
 };
 PID_t pid_line = {
-    .Kp = 38.0f, .Ki = 0.0f, .Kd = 0.1f,
+    .Kp = 40.0f, .Ki = 0.0f, .Kd = 0.1f,
     .OutMax = 3000, .OutMin = -3000,
     .IntegralMax = 3000, .IntegralMin = -3000,
     .Mode = PID_DERIVATIVE_ON_MEASUREMENT, .Enabled = 0
@@ -401,9 +401,9 @@ void Pendulum_SendCmd(uint8_t cmd)
 /* ================================================================ */
 
 #define LAP_RUN_SPEED        700      // 循迹速度
-#define LAP_SLOW_DOWN_DIST   5650.0f  // 距离到了 5.5 米 → 减速
+#define LAP_SLOW_DOWN_DIST   5700.0f  // 距离到了 5.5 米 → 减速
 #define LAP_SLOW_DOWN_YAW    320.0f   // 累计角度 > 320° → 确认快走完一圈
-#define LAP_STOP_DIST        5981.0f  // 停车距离（一圈约6.14米）
+#define LAP_STOP_DIST        5979.0f  // 停车距离（一圈约6.14米）
 #define LAP_STOP_YAW         360.0f   // 停车角度
 
 typedef enum {
@@ -449,7 +449,7 @@ void Task1(void)
 
     switch (lr_state)
     {
-    /* ---- 正常循迹：距离 + 角度确认快走完一圈 ---- */
+    /* ---- 正常循迹 ---- */
     case LR_FOLLOW:
     {
         speed = LAP_RUN_SPEED;
@@ -465,14 +465,12 @@ void Task1(void)
     /* ---- S曲线减速 ---- */
     case LR_SLOW_DOWN:
     {
-        /* S曲线：从LAP_RUN_SPEED降到200 */
         float progress = (CurrentDistance - LAP_SLOW_DOWN_DIST) / (LAP_STOP_DIST - LAP_SLOW_DOWN_DIST);
         if (progress > 1.0f) progress = 1.0f;
         if (progress < 0.0f) progress = 0.0f;
         float smooth = progress * progress * (3.0f - 2.0f * progress);
         speed = 200.0f + (LAP_RUN_SPEED - 200.0f) * (1.0f - smooth);
 
-        /* 距离进入停车窗口后，距离到 或 角度到 → 停车 */
         if (CurrentDistance >= LAP_STOP_DIST * 0.92f)
         {
             if (CurrentDistance >= LAP_STOP_DIST || yaw_total >= LAP_STOP_YAW)
@@ -555,7 +553,7 @@ void Task3(void)
 
     /* 速度曲线：加速 → 匀速 → 缓减速 → 滑停 */
     float speed = 0;
-    float base_speed  = 180.0f;    // 起步基础速度
+    float base_speed  = 200.0f;    // 起步基础速度
     float accel_end   = 400.0f;    // 加速段 400mm
     float cruise_end  = 1200.0f;   // 匀速段结束
     float timer_stop  = 1500.0f;   // 1500mm 停计时（通过B点）
@@ -657,39 +655,39 @@ void Task4(void)
     if (curve_factor < 0.5f) curve_factor = 0.5f;  // 最低降到50%
 
     float speed = 0;
-    float base_speed  = 150.0f;     // 起步速度（更低，更稳）
+    float base_speed  = 200.0f;     // 起步速度
     float max_speed   = LAP45_RUN_SPEED * curve_factor;  // 弯道自动降速
-    float accel_dist  = 800.0f;     // 加速段更长（800mm，更平缓）
-    float decel_start = 5500.0f;
-    float stop_dist   = 5981.0f;    // A点距离
-    float stop_yaw    = 350.0f;     // A点角度
+    float accel_dist  = 800.0f;     // 加速段 800mm
+    float decel_start = 5500.0f;    // 开始减速
+    float a_point     = 5981.0f;    // A点：停计时
+    float stop_yaw    = 350.0f;     // A点角度：停计时
+    float car_stop    = 6100.0f;    // 停车距离
+
+    /* A点停计时 */
+    if (CurrentDistance >= a_point || lr4_yaw_total >= stop_yaw)
+        Stopwatch_Stop();
 
     if (CurrentDistance < accel_dist)
     {
-        /* S曲线加速（更长距离，更平缓） */
+        /* S曲线加速 */
         float x = CurrentDistance / accel_dist;
         float s = x * x * (3.0f - 2.0f * x);
         speed = base_speed + (max_speed - base_speed) * s;
     }
     else if (CurrentDistance < decel_start && lr4_yaw_total < 360.0f)
     {
-        speed = max_speed;  // 匀速段也受弯道降速影响
+        speed = max_speed;
     }
     else
     {
-        if (CurrentDistance < stop_dist)
+        if (CurrentDistance < car_stop)
         {
-            /* S曲线减速 */
-            float x = (CurrentDistance - decel_start) / (stop_dist - decel_start);
+            /* S曲线减速，但不低于150 */
+            float x = (CurrentDistance - decel_start) / (car_stop - decel_start);
+            if (x > 1.0f) x = 1.0f;
             float s = x * x * (3.0f - 2.0f * x);
             speed = max_speed * (1.0f - s);
-            if (speed < 80.0f)
-            {
-                Set_PWM(0, 0);
-                task_mode = TASK_IDLE;
-                Task_Timer_Stop();
-                return;
-            }
+            if (speed < 150.0f) speed = 150.0f;
         }
         else
         {
@@ -710,14 +708,6 @@ void Task4(void)
     target_speed = target;
     target_line  = 0;
     PID_Calc();
-
-    if (CurrentDistance >= stop_dist || lr4_yaw_total >= stop_yaw)
-    {
-        Set_PWM(0, 0);
-        task_mode = TASK_IDLE;
-        Task_Timer_Stop();
-        Stopwatch_Stop();
-    }
 }
 
 /* 任务五：跟任务四完全一样 */
